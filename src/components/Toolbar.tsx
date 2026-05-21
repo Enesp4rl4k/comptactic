@@ -2,14 +2,14 @@ import { useBoardStore } from '../store/useBoardStore'
 import type { ToolId, Team } from '../types'
 
 const TOOLS: { id: ToolId; label: string; glyph: string }[] = [
-  { id: 'select', label: 'Seç / Taşı', glyph: '⭖' },
-  { id: 'arrow', label: 'Ok', glyph: '↗' },
-  { id: 'line', label: 'Çizgi', glyph: '╱' },
-  { id: 'pen', label: 'Serbest', glyph: '✎' },
-  { id: 'rect', label: 'Dikdörtgen', glyph: '▭' },
-  { id: 'circle', label: 'Daire', glyph: '◯' },
-  { id: 'text', label: 'Metin', glyph: 'T' },
-  { id: 'measure', label: 'Ölçüm (m)', glyph: '📏' },
+  { id: 'select', label: 'Select / Move', glyph: '⭖' },
+  { id: 'arrow', label: 'Arrow', glyph: '↗' },
+  { id: 'line', label: 'Line', glyph: '╱' },
+  { id: 'pen', label: 'Freehand', glyph: '✎' },
+  { id: 'rect', label: 'Rectangle', glyph: '▭' },
+  { id: 'circle', label: 'Circle', glyph: '◯' },
+  { id: 'text', label: 'Text', glyph: 'T' },
+  { id: 'measure', label: 'Measure (m)', glyph: '📏' },
 ]
 
 const COLORS = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316', '#ffffff', '#0b0e13']
@@ -17,7 +17,7 @@ const COLORS = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316'
 const TEAMS: { id: Team; label: string; color: string }[] = [
   { id: 'blufor', label: 'BLUFOR', color: '#3b82f6' },
   { id: 'opfor', label: 'OPFOR', color: '#ef4444' },
-  { id: 'neutral', label: 'Nötr', color: '#eab308' },
+  { id: 'neutral', label: 'Neutral', color: '#eab308' },
 ]
 
 export default function Toolbar() {
@@ -80,7 +80,7 @@ export default function Toolbar() {
       <Divider />
 
       <label className="flex items-center gap-2 text-xs text-gray-400">
-        Kalınlık
+        Width
         <input
           type="range"
           min={1}
@@ -92,13 +92,13 @@ export default function Toolbar() {
       </label>
 
       <div className="ml-auto flex gap-1">
-        <ActionBtn onClick={undo} title="Geri al (Ctrl+Z)">↶</ActionBtn>
-        <ActionBtn onClick={redo} title="İleri al (Ctrl+Y)">↷</ActionBtn>
+        <ActionBtn onClick={undo} title="Undo (Ctrl+Z)">↶</ActionBtn>
+        <ActionBtn onClick={redo} title="Redo (Ctrl+Y)">↷</ActionBtn>
         <ActionBtn
           onClick={() => {
-            if (confirm('Tahtayı temizle?')) clearBoard()
+            if (confirm('Clear the board?')) clearBoard()
           }}
-          title="Tahtayı temizle"
+          title="Clear board"
         >
           🗑
         </ActionBtn>

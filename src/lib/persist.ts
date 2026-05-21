@@ -71,7 +71,13 @@ export function decodeFromHash(): BoardSnapshot | null {
 // --- PNG export from the Konva stage ---
 
 export function exportPNG() {
-  const stage = Konva.stages[0]
+  // Pick the stage that is actually visible (board view vs. tactic sheet may both
+  // have mounted a stage); fall back to the first one.
+  const stage =
+    Konva.stages.find((s) => {
+      const c = s.container()
+      return c && c.offsetParent !== null
+    }) ?? Konva.stages[0]
   if (!stage) return
   const tr = stage.find('Transformer')
   tr.forEach((t) => t.hide())

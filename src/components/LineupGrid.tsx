@@ -1,24 +1,26 @@
 import { useBoardStore } from '../store/useBoardStore'
 import { MAP_BY_ID } from '../data/maps'
 import { ROLES } from '../data/roles'
+import VehiclePanel from './VehiclePanel'
 import type { RosterSquad, Team } from '../types'
 
-const SLOTS = 9
+const MAX_SLOTS = 9 // Squad holds at most 9 players in-game
 
-const TEAM_ACCENT: Record<Team, string> = {
-  blufor: '#3b82f6',
-  opfor: '#ef4444',
-  neutral: '#eab308',
-}
-
-// Excel-style line-up: squads are columns, the 9 kit slots are rows.
-// "Önce squad ekle, sonra oyuncuları doldur" akışı.
+// Excel-style line-up: squads = columns, players = rows.
+// Rows grow dynamically: a new empty row opens as players are added (max 9).
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, removeSquad, setMemberSlot } = useBoardStore()
+  const { mapId, layerId, squads, addSquad, updateSquad, removeSquad, setMemberSlot, removeMemberSlot } =
+    useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
 
   const totalPlayers = squads.reduce((n, s) => n + s.members.filter((m) => m.name.trim()).length, 0)
+
+  // Visible rows = largest squad's player count + 1 empty row (capped at 9)
+  const maxRows = Math.min(
+    MAX_SLOTS,
+    Math.max(1, ...squads.map((s) => Math.min(MAX_SLOTS, s.members.length + 1))),
+  )
 
   return (
     <div className="h-full flex flex-col bg-[#0c0f14]">
@@ -29,12 +31,14 @@ export default function LineupGrid() {
             {map!.name} · {layer.name}
           </span>
         )}
-        <span className="text-xs text-gray-500">· {squads.length} squad · {totalPlayers} oyuncu</span>
+        <span className="text-xs text-gray-500">
+          · {squads.length} squads · {totalPlayers} players
+        </span>
         <button
           onClick={addSquad}
           className="ml-auto px-3 h-8 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
         >
-          + Squad Ekle
+          + Add Squad
         </button>
       </div>
 
@@ -43,24 +47,21 @@ export default function LineupGrid() {
           <div className="grid place-items-center h-full text-center text-gray-500">
             <div>
               <div className="text-4xl mb-2">📋</div>
-              <p>Henüz squad yok.</p>
+              <p>No squads yet.</p>
               <button
                 onClick={addSquad}
                 className="mt-3 px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm"
               >
-                + İlk Squad'ı Ekle
+                + Add First Squad
               </button>
             </div>
           </div>
         ) : (
           <div className="inline-flex gap-2 items-start">
-            {/* row labels */}
+            {/* row number labels */}
             <div className="shrink-0 pt-[42px]">
-              {Array.from({ length: SLOTS }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-9 w-8 grid place-items-center text-xs text-gray-500 border-b border-edge/40"
-                >
+              {Array.from({ length: maxRows }).map((_, i) => (
+                <div key={i} className="h-9 w-8 grid place-items-center text-xs text-gray-500 border-b border-edge/40">
                   {i + 1}
                 </div>
               ))}
@@ -70,9 +71,11 @@ export default function LineupGrid() {
               <SquadColumn
                 key={sq.id}
                 squad={sq}
+                rows={maxRows}
                 onUpdate={(p) => updateSquad(sq.id, p)}
                 onRemove={() => removeSquad(sq.id)}
                 onSlot={(i, p) => setMemberSlot(sq.id, i, p)}
+                onRemoveSlot={(i) => removeMemberSlot(sq.id, i)}
               />
             ))}
 
@@ -85,32 +88,50 @@ export default function LineupGrid() {
           </div>
         )}
       </div>
+
+      <VehiclePanel />
     </div>
   )
 }
 
 function SquadColumn({
   squad,
+  rows,
   onUpdate,
   onRemove,
   onSlot,
+  onRemoveSlot,
 }: {
   squad: RosterSquad
+  rows: number
   onUpdate: (patch: Partial<RosterSquad>) => void
   onRemove: () => void
   onSlot: (index: number, patch: Partial<{ name: string; role: string }>) => void
+  onRemoveSlot: (index: number) => void
 }) {
-  const accent = TEAM_ACCENT[squad.team]
+  const accent = squad.color
+  const count = squad.members.length
+  // Rows for this squad: filled members + (if room) 1 extra row to add another
+  const visible = Math.min(MAX_SLOTS, count + (count < MAX_SLOTS ? 1 : 0))
+
+  const focusNext = (index: number) => {
+    setTimeout(() => {
+      const next = document.querySelector<HTMLInputElement>(`[data-name="${squad.id}-${index + 1}"]`)
+      next?.focus()
+    }, 0)
+  }
 
   return (
     <div className="shrink-0 w-56 rounded border border-edge bg-panel overflow-hidden">
       {/* header */}
       <div className="flex items-center gap-1 px-2 h-[42px]" style={{ background: accent + '22', borderBottom: `2px solid ${accent}` }}>
+        <span className="h-3 w-3 rounded-full shrink-0" style={{ background: accent }} />
         <input
           value={squad.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
           className="bg-transparent text-sm font-semibold flex-1 min-w-0 outline-none"
         />
+        <span className="text-[10px] text-gray-400">{count}/{MAX_SLOTS}</span>
         <select
           value={squad.team}
           onChange={(e) => onUpdate({ team: e.target.value as Team })}
@@ -118,19 +139,24 @@ function SquadColumn({
         >
           <option value="blufor">BLU</option>
           <option value="opfor">OPF</option>
-          <option value="neutral">NÖT</option>
+          <option value="neutral">NEU</option>
         </select>
-        <button onClick={onRemove} className="text-gray-500 hover:text-red-400 px-1" title="Squad sil">
+        <button onClick={onRemove} className="text-gray-500 hover:text-red-400 px-1" title="Remove squad">
           ×
         </button>
       </div>
 
-      {/* slots */}
-      {Array.from({ length: SLOTS }).map((_, i) => {
+      {/* rows */}
+      {Array.from({ length: rows }).map((_, i) => {
+        if (i >= visible) {
+          // empty spacer cell (keeps rows aligned across squads)
+          return <div key={i} className="h-9 border-b border-edge/20" />
+        }
         const m = squad.members[i]
+        const isAddRow = i === count && count < MAX_SLOTS
         const isLeader = i === 0
         return (
-          <div key={i} className="flex items-center gap-1 h-9 px-1.5 border-b border-edge/40">
+          <div key={i} className={`flex items-center gap-1 h-9 px-1.5 border-b border-edge/40 ${isAddRow ? 'opacity-70' : ''}`}>
             <select
               value={m?.role ?? (isLeader ? 'sl' : 'rifleman')}
               onChange={(e) => onSlot(i, { role: e.target.value })}
@@ -144,11 +170,27 @@ function SquadColumn({
               ))}
             </select>
             <input
+              data-name={`${squad.id}-${i}`}
               value={m?.name ?? ''}
-              placeholder={isLeader ? 'Squad Leader' : `oyuncu ${i + 1}`}
+              placeholder={isAddRow ? '+ add player' : isLeader ? 'Squad Leader' : `player ${i + 1}`}
               onChange={(e) => onSlot(i, { name: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  focusNext(i)
+                }
+              }}
               className="bg-panel2 text-xs rounded border border-edge px-1.5 py-1 flex-1 min-w-0 outline-none focus:border-blue-500"
             />
+            {!isAddRow && (
+              <button
+                onClick={() => onRemoveSlot(i)}
+                className="text-gray-600 hover:text-red-400 text-xs px-1"
+                title="Remove player"
+              >
+                ×
+              </button>
+            )}
           </div>
         )
       })}

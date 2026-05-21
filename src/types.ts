@@ -91,6 +91,11 @@ export type GameMode =
   | 'TC'
   | 'Insurgency'
   | 'Destruction'
+  | 'Seed'
+  | 'TA'
+  | 'Tanks'
+  | 'Grounds'
+  | (string & {})
 
 export interface CapturePoint {
   id: string
@@ -105,15 +110,16 @@ export interface LayerInfo {
   name: string
   mode: GameMode
   factions: [string, string]
-  time: 'Day' | 'Night' | 'Dusk' | 'Dawn'
+  /** Lighting/time-of-day label as reported by the dataset (e.g. "Sunny Mid Day"). */
+  time: string
+  /** Per-layer minimap URL (capture points & lanes baked in). */
+  image: string
   capturePoints?: CapturePoint[]
 }
 
 export interface MapInfo {
   id: string
   name: string
-  /** Path under /public, e.g. /maps/yehorivka.jpg */
-  image: string
   /** Real-world size of the map square in metres (for the range/mortar tool). */
   sizeMeters: number
   layers: LayerInfo[]
@@ -131,7 +137,33 @@ export interface RosterSquad {
   id: string
   name: string
   team: Team
+  /** Distinct squad color used to tint squad-specific markers on the board. */
+  color: string
   members: RosterMember[]
+}
+
+// ---- Vehicle assignments (who crews/rides which asset) ----
+
+export interface VehicleAssignment {
+  id: string
+  /** Vehicle asset id from the asset catalog (e.g. 'logi', 'ifv', 'mbt'). */
+  assetId: string
+  /** Optional custom label, e.g. "Armor 1". */
+  name?: string
+  /** Squads assigned to this vehicle. */
+  squadIds: string[]
+  /** Free-form crew note / specific players. */
+  note?: string
+  /** Spawn / respawn timing note, e.g. "0:00 · resp 6:00". */
+  timing?: string
+}
+
+// ---- Slides (multiple tactics on the same layer) ----
+
+export interface Slide {
+  id: string
+  name: string
+  elements: Record<string, BoardElement>
 }
 
 // ---- Persisted board snapshot (Phase 4) ----
@@ -140,6 +172,10 @@ export interface BoardSnapshot {
   version: 1
   mapId: string | null
   layerId: string | null
-  elements: Record<string, BoardElement>
+  slides: Slide[]
+  activeSlideId: string
+  /** @deprecated legacy single-board field — read only for backward compatibility. */
+  elements?: Record<string, BoardElement>
   squads: RosterSquad[]
+  vehicles: VehicleAssignment[]
 }

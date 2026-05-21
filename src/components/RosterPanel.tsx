@@ -15,7 +15,7 @@ export default function RosterPanel() {
     <div className="w-64 shrink-0 bg-panel border-r border-edge flex flex-col">
       {/* layer info */}
       <div className="px-3 py-3 border-b border-edge">
-        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Aktif Layer</div>
+        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Active Layer</div>
         {layer ? (
           <>
             <div className="font-medium text-sm">{layer.name}</div>
@@ -28,13 +28,13 @@ export default function RosterPanel() {
             </div>
           </>
         ) : (
-          <div className="text-xs text-gray-600">Harita seçilmedi</div>
+          <div className="text-xs text-gray-600">No map selected</div>
         )}
       </div>
 
       {/* roster */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-edge">
-        <span className="text-xs uppercase tracking-wide text-gray-500">Kadro / Line-up</span>
+        <span className="text-xs uppercase tracking-wide text-gray-500">Roster / Line-up</span>
         <button
           onClick={addSquad}
           className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white"
@@ -46,7 +46,7 @@ export default function RosterPanel() {
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {squads.length === 0 && (
           <p className="text-[11px] text-gray-600 px-1 py-2">
-            Henüz squad yok. “+ Squad” ile başla. Her squad max 9 kişi.
+            No squads yet. Start with “+ Squad”. Each squad holds up to 9 players.
           </p>
         )}
         {squads.map((sq) => (
@@ -55,7 +55,7 @@ export default function RosterPanel() {
       </div>
 
       <div className="px-3 py-2 text-[10px] text-gray-600 border-t border-edge">
-        Yeni squadlar <span style={{ color: team === 'opfor' ? '#ef4444' : '#3b82f6' }}>{team.toUpperCase()}</span> takımına eklenir.
+        New squads are added to the <span style={{ color: team === 'opfor' ? '#ef4444' : '#3b82f6' }}>{team.toUpperCase()}</span> team.
       </div>
     </div>
   )
@@ -70,7 +70,7 @@ function SquadCard({
   onUpdate: (patch: Partial<RosterSquad>) => void
   onRemove: () => void
 }) {
-  const accent = squad.team === 'opfor' ? '#ef4444' : squad.team === 'neutral' ? '#eab308' : '#3b82f6'
+  const accent = squad.color
 
   const addMember = () => {
     if (squad.members.length >= MAX_MEMBERS) return
@@ -96,9 +96,9 @@ function SquadCard({
         >
           <option value="blufor">BLU</option>
           <option value="opfor">OPF</option>
-          <option value="neutral">NÖT</option>
+          <option value="neutral">NEU</option>
         </select>
-        <button onClick={onRemove} className="text-gray-500 hover:text-red-400 px-1" title="Squad sil">
+        <button onClick={onRemove} className="text-gray-500 hover:text-red-400 px-1" title="Remove squad">
           ×
         </button>
       </div>
@@ -119,7 +119,7 @@ function SquadCard({
             </select>
             <input
               value={m.name}
-              placeholder="oyuncu"
+              placeholder="player"
               onChange={(e) => updateMember(m.id, { name: e.target.value })}
               className="bg-panel text-xs rounded border border-edge px-1.5 py-0.5 flex-1 min-w-0 outline-none focus:border-blue-500"
             />
@@ -134,7 +134,7 @@ function SquadCard({
             disabled={squad.members.length >= MAX_MEMBERS}
             className="text-[11px] text-blue-400 hover:text-blue-300 disabled:text-gray-600"
           >
-            + Oyuncu
+            + Player
           </button>
           <span className="text-[10px] text-gray-500">{squad.members.length}/{MAX_MEMBERS}</span>
         </div>

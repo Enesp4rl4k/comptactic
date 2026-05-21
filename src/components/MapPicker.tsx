@@ -14,7 +14,7 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
-          <h2 className="font-semibold">Harita & Layer Seç</h2>
+          <h2 className="font-semibold">Select Map &amp; Layer</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">
             ×
           </button>
@@ -32,7 +32,7 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
                 }`}
               >
                 {m.name}
-                <span className="block text-[10px] text-gray-500">{m.layers.length} layer</span>
+                <span className="block text-[10px] text-gray-500">{m.layers.length} layers</span>
               </button>
             ))}
           </div>

@@ -4,7 +4,9 @@ import AssetPalette from './components/AssetPalette'
 import RosterPanel from './components/RosterPanel'
 import MapPicker from './components/MapPicker'
 import TacticalBoard from './components/TacticalBoard'
+import SlidesBar from './components/SlidesBar'
 import LineupGrid from './components/LineupGrid'
+import TacticSheet from './components/TacticSheet'
 import { useBoardStore } from './store/useBoardStore'
 import { MAP_BY_ID } from './data/maps'
 import {
@@ -20,7 +22,7 @@ import {
 export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [view, setView] = useState<'board' | 'lineup'>('board')
+  const [view, setView] = useState<'board' | 'lineup' | 'sheet'>('board')
   const store = useBoardStore()
   const map = store.mapId ? MAP_BY_ID[store.mapId] : null
 
@@ -41,7 +43,7 @@ export default function App() {
     const id = setTimeout(() => saveLocal(store.toSnapshot()), 600)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.elements, store.squads, store.mapId, store.layerId])
+  }, [store.elements, store.slides, store.activeSlideId, store.squads, store.vehicles, store.mapId, store.layerId])
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -53,10 +55,10 @@ export default function App() {
     try {
       await navigator.clipboard.writeText(url)
       history.replaceState(null, '', url)
-      flash('Paylaşım linki kopyalandı')
+      flash('Share link copied to clipboard')
     } catch {
       history.replaceState(null, '', url)
-      flash('Link adres çubuğuna yazıldı')
+      flash('Link written to the address bar')
     }
   }
 
@@ -64,7 +66,7 @@ export default function App() {
     const snap = await importJSON()
     if (snap) {
       store.loadSnapshot(snap)
-      flash('Plan yüklendi')
+      flash('Plan loaded')
     }
   }
 
@@ -73,30 +75,33 @@ export default function App() {
       {/* header */}
       <header className="flex items-center gap-3 px-4 h-12 bg-[#161a22] border-b border-edge shrink-0">
         <div className="font-bold tracking-tight text-blue-400">
-          SQUAD<span className="text-white"> Tactics</span>
+          Comp<span className="text-white">Tactic</span>
         </div>
         <button
           onClick={() => setPickerOpen(true)}
           className="px-3 h-8 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
         >
-          🗺️ {map ? map.name : 'Harita Seç'}
+          🗺️ {map ? map.name : 'Select Map'}
         </button>
 
         <div className="ml-2 flex items-center rounded bg-panel2 border border-edge p-0.5">
           <TabBtn active={view === 'board'} onClick={() => setView('board')}>
-            🗺️ Tahta
+            🗺️ Board
           </TabBtn>
           <TabBtn active={view === 'lineup'} onClick={() => setView('lineup')}>
             📋 Line-up
           </TabBtn>
+          <TabBtn active={view === 'sheet'} onClick={() => setView('sheet')}>
+            🧩 Tactic Sheet
+          </TabBtn>
         </div>
 
         <div className="ml-auto flex items-center gap-1.5 text-sm">
-          <HeaderBtn onClick={() => downloadJSON(store.toSnapshot())}>💾 Kaydet</HeaderBtn>
-          <HeaderBtn onClick={onImport}>📂 Yükle</HeaderBtn>
+          <HeaderBtn onClick={() => downloadJSON(store.toSnapshot())}>💾 Save</HeaderBtn>
+          <HeaderBtn onClick={onImport}>📂 Load</HeaderBtn>
           <HeaderBtn onClick={() => exportPNG()}>🖼️ PNG</HeaderBtn>
           <HeaderBtn onClick={onShare} primary>
-            🔗 Paylaş
+            🔗 Share
           </HeaderBtn>
         </div>
       </header>
@@ -104,17 +109,26 @@ export default function App() {
       {view === 'board' && <Toolbar />}
 
       {/* main */}
-      {view === 'board' ? (
+      {view === 'board' && (
         <div className="flex flex-1 min-h-0">
           <RosterPanel />
-          <div className="flex-1 min-w-0">
-            <TacticalBoard />
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex-1 min-h-0">
+              <TacticalBoard />
+            </div>
+            <SlidesBar />
           </div>
           <AssetPalette />
         </div>
-      ) : (
+      )}
+      {view === 'lineup' && (
         <div className="flex-1 min-h-0">
           <LineupGrid />
+        </div>
+      )}
+      {view === 'sheet' && (
+        <div className="flex-1 min-h-0">
+          <TacticSheet />
         </div>
       )}
 
