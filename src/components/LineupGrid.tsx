@@ -149,11 +149,12 @@ function SquadColumn({
         dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
       }`}
       onDragOver={(e) => {
-        const t = e.dataTransfer.types
-        const isSquad = t.includes('squadMove')
+        // Browsers lowercase DataTransfer.types, so compare against lowercase keys.
+        const t = Array.from(e.dataTransfer.types).map((x) => x.toLowerCase())
+        const isSquad = t.includes('squadmove')
         // accept squad reorder always; accept player/member only if not full
         if (!isSquad && full) return
-        if (isSquad || t.includes('playerName') || t.includes('memberMove')) {
+        if (isSquad || t.includes('playername') || t.includes('membermove')) {
           e.preventDefault()
           if (!dragOver) setDragOver(true)
         }

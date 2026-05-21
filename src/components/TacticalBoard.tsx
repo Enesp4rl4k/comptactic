@@ -14,6 +14,7 @@ import {
 } from 'react-konva'
 import type Konva from 'konva'
 import { useBoardStore } from '../store/useBoardStore'
+import { usePresence } from '../lib/presence'
 import { useImage } from '../lib/useImage'
 import { useTintedIcon } from '../lib/useTintedIcon'
 import { canUploadImage, uploadPlanImage } from '../lib/storage'
@@ -73,6 +74,10 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const lastPenRef = useRef<{ x: number; y: number } | null>(null)
   // id of the most recent freehand stroke, to allow continuing it
   const lastPenIdRef = useRef<string | null>(null)
+  // active right-button pan session
+  const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number } | null>(null)
+  // throttle outgoing presence cursor updates
+  const lastCursorRef = useRef(0)
 
   const [size, setSize] = useState({ w: 800, h: 600 })
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 })
@@ -100,6 +105,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const duplicateSelection = useBoardStore((s) => s.duplicateSelection)
   const toggleSelection = useBoardStore((s) => s.toggleSelection)
 
+  const placingAssetId = useBoardStore((s) => s.placingAssetId)
   const customImage = useBoardStore((s) => s.customImage)
   const setCustomImage = useBoardStore((s) => s.setCustomImage)
   const map = mapId ? MAP_BY_ID[mapId] : null
@@ -283,8 +289,40 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     setPoly(null)
   }
 
+  // Right mouse button pans the map regardless of the active tool, so you can
+  // draw with the left button and reposition the map with the right.
+  const startPan = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    e.evt.preventDefault()
+    panRef.current = { sx: e.evt.clientX, sy: e.evt.clientY, vx: view.x, vy: view.y }
+    if (containerRef.current) containerRef.current.style.cursor = 'grabbing'
+    const move = (ev: MouseEvent) => {
+      const p = panRef.current
+      if (!p) return
+      setView((v) => ({ ...v, x: p.vx + (ev.clientX - p.sx), y: p.vy + (ev.clientY - p.sy) }))
+    }
+    const up = () => {
+      panRef.current = null
+      if (containerRef.current) containerRef.current.style.cursor = ''
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', up)
+    }
+    window.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', up)
+  }
+
   const onMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (e.evt.button === 2) {
+      startPan(e)
+      return
+    }
+    if (e.evt.button !== 0) return // ignore middle button
     if (readOnly) return
+    // Click-to-place: an armed palette asset drops at the cursor and stays armed
+    // so multiple can be placed; right-click/Escape/select tool cancels it.
+    if (placingAssetId) {
+      placeAsset(placingAssetId, relPointer())
+      return
+    }
     if (tool === 'zone') {
       const p = relPointer()
       // close when clicking near the first vertex
@@ -322,6 +360,14 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   }
 
   const onMouseMove = () => {
+    if (!readOnly) {
+      const now = Date.now()
+      if (now - lastCursorRef.current > 45) {
+        lastCursorRef.current = now
+        const p = relPointer()
+        usePresence.getState().setCursor(p.x, p.y)
+      }
+    }
     if (tool === 'zone') {
       if (poly) {
         const p = relPointer()
@@ -391,17 +437,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
   }
 
-  // --- drop assets from palette (squad-aware coloring + label) ---
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    if (readOnly) return
-    const assetId = e.dataTransfer.getData('assetId')
-    if (!assetId) return
-    const stage = stageRef.current
-    if (!stage) return
-    stage.setPointersPositions(e)
-    const p = stage.getRelativePointerPosition()
-    if (!p) return
+  // Place an asset icon at a stage point (squad-aware coloring + label).
+  const placeAsset = (assetId: string, p: { x: number; y: number }) => {
     const asset = ASSET_BY_ID[assetId]
     const st = useBoardStore.getState()
     const activeSquad = st.squads.find((s) => s.id === st.activeSquadId) ?? null
@@ -428,6 +465,20 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     } as Omit<BoardElement, 'id' | 'z'>)
   }
 
+  // --- drop assets from palette (squad-aware coloring + label) ---
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (readOnly) return
+    const assetId = e.dataTransfer.getData('assetId')
+    if (!assetId) return
+    const stage = stageRef.current
+    if (!stage) return
+    stage.setPointersPositions(e)
+    const p = stage.getRelativePointerPosition()
+    if (!p) return
+    placeAsset(assetId, p)
+  }
+
   const ordered = useMemo(() => Object.values(elements).sort((a, b) => a.z - b.z), [elements])
 
   return (
@@ -436,6 +487,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       className="relative h-full w-full overflow-hidden bg-bg"
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {!hasBg && (
         <div className="absolute inset-0 grid place-items-center text-center text-gray-500 pointer-events-none">
@@ -455,7 +507,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         y={view.y}
         scaleX={view.scale}
         scaleY={view.scale}
-        draggable={readOnly ? true : tool === 'select' && !draft}
+        draggable={readOnly ? true : tool === 'select' && !draft && !placingAssetId}
         onWheel={onWheel}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
@@ -466,7 +518,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         onDragEnd={(e) => {
           if (e.target === stageRef.current) setView((v) => ({ ...v, x: e.target.x(), y: e.target.y() }))
         }}
-        style={{ cursor: readOnly ? 'grab' : isDrawingTool ? 'crosshair' : 'default' }}
+        style={{ cursor: readOnly ? 'grab' : placingAssetId ? 'copy' : isDrawingTool ? 'crosshair' : 'default' }}
       >
         {/* base layer: background + capture points (static) */}
         <Layer listening={false}>
@@ -482,9 +534,11 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
 
         {/* elements layer (memoized children -> not redrawn while drafting) */}
         <Layer>
-          {ordered.map((el) => (
-            <ElementView key={el.id} el={el} selectable={!readOnly && tool === 'select'} onSelect={handleSelect} onChange={handleChange} />
-          ))}
+          {ordered
+            .filter((el) => !el.hidden)
+            .map((el) => (
+              <ElementView key={el.id} el={el} selectable={!readOnly && tool === 'select' && !el.locked} onSelect={handleSelect} onChange={handleChange} />
+            ))}
           <Transformer
             ref={trRef}
             rotateEnabled
@@ -498,6 +552,13 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
           {draft && <DraftView draft={draft} color={color} strokeWidth={strokeWidth} mapSize={map?.sizeMeters ?? null} />}
           {poly && <ZoneDraft poly={poly} color={effDraw().color} />}
         </Layer>
+
+        {/* live collaborators' cursors */}
+        {!readOnly && (
+          <Layer listening={false}>
+            <PeerCursors scale={view.scale} />
+          </Layer>
+        )}
       </Stage>
 
       {!readOnly && <SelectionBar />}
@@ -940,6 +1001,25 @@ function IconView({
       {shape === 'diamond' && <RegularPolygon sides={4} radius={R + 4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       <Text text={asset?.glyph ?? '?'} fontSize={20} align="center" verticalAlign="middle" width={R * 2} height={R * 2} offsetX={R} offsetY={R} listening={false} />
     </Group>
+  )
+}
+
+// Live cursors of other people in the same room (stage coordinates).
+function PeerCursors({ scale }: { scale: number }) {
+  const peers = usePresence((s) => s.peers)
+  const s = 1 / scale // keep cursors a constant on-screen size regardless of zoom
+  return (
+    <>
+      {Object.values(peers)
+        .filter((p) => p.x != null && p.y != null)
+        .map((p) => (
+          <Group key={p.id} x={p.x as number} y={p.y as number} listening={false}>
+            <Line points={[0, 0, 0, 18 * s, 5 * s, 13 * s, 12 * s, 20 * s, 15 * s, 17 * s, 8 * s, 11 * s, 14 * s, 11 * s]} closed fill={p.color} stroke="#0b0e13" strokeWidth={1 * s} />
+            <Rect x={14 * s} y={16 * s} width={(p.name.length * 7 + 12) * s} height={18 * s} cornerRadius={4 * s} fill={p.color} />
+            <Text x={20 * s} y={20 * s} text={p.name} fontSize={11 * s} fontStyle="bold" fill="#0b0e13" />
+          </Group>
+        ))}
+    </>
   )
 }
 

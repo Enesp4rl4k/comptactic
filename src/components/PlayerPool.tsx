@@ -43,7 +43,8 @@ export default function PlayerPool() {
         <div
           className={`p-2 space-y-2 ${dropActive ? 'ring-2 ring-accent/50 ring-inset' : ''}`}
           onDragOver={(e) => {
-            if (e.dataTransfer.types.includes('memberMove')) {
+            // Browsers lowercase DataTransfer.types, so compare against the lowercase key.
+            if (Array.from(e.dataTransfer.types).map((x) => x.toLowerCase()).includes('membermove')) {
               e.preventDefault()
               if (!dropActive) setDropActive(true)
             }

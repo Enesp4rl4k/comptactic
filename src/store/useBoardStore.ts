@@ -143,6 +143,8 @@ interface BoardState {
   vehicles: VehicleAssignment[]
   // unassigned players pasted from sign-ups
   playerPool: string[]
+  /** Asset armed for click-to-place; left-clicking the map drops it (stays armed). */
+  placingAssetId: string | null
 
   // slides
   addSlide: () => void
@@ -156,6 +158,7 @@ interface BoardState {
   setLayer: (layerId: string) => void
   setCustomImage: (dataUrl: string | null, name?: string | null) => void
   setTool: (tool: ToolId) => void
+  setPlacingAsset: (assetId: string | null) => void
   setTeam: (team: Team) => void
   setColor: (color: string) => void
   setStrokeWidth: (w: number) => void
@@ -170,6 +173,10 @@ interface BoardState {
   copySelection: () => void
   paste: () => void
   duplicateSelection: () => void
+  /** Add a saved group of elements (a "stamp") with fresh ids; selects them. */
+  addStampElements: (els: BoardElement[]) => void
+  /** Replace the roster (squads + vehicles + player pool) from a saved template. */
+  applyRoster: (squads: RosterSquad[], vehicles: VehicleAssignment[], pool: string[]) => void
   moveSelectionBy: (dx: number, dy: number, exceptId: string) => void
   toggleSnap: () => void
   clearBoard: () => void
@@ -180,6 +187,10 @@ interface BoardState {
 
   bringToFront: (id: string) => void
   sendToBack: (id: string) => void
+  raiseElement: (id: string) => void
+  lowerElement: (id: string) => void
+  toggleElementHidden: (id: string) => void
+  toggleElementLocked: (id: string) => void
 
   // roster
   addSquad: () => void
@@ -244,6 +255,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   activeSquadId: null,
   vehicles: [],
   playerPool: [],
+  placingAssetId: null,
 
   setMap: (mapId, layerId) =>
     set((s) => switchBoard(s, keyFor(layerId, null, null), { mapId, layerId, customImage: null, customImageName: null })),
@@ -298,7 +310,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const i = slides.findIndex((sl) => sl.id === activeSlideId)
     if (i > 0) get().setActiveSlide(slides[i - 1].id)
   },
-  setTool: (tool) => set({ tool, selectedIds: tool === 'select' ? get().selectedIds : [] }),
+  setTool: (tool) => set({ tool, selectedIds: tool === 'select' ? get().selectedIds : [], placingAssetId: null }),
+  // Arm an asset for click-to-place; keep the select tool so map clicks drop it.
+  setPlacingAsset: (assetId) => set((s) => ({ placingAssetId: assetId, tool: 'select', selectedIds: assetId ? [] : s.selectedIds })),
   setTeam: (team) => set({ team, color: TEAM_COLORS[team] }),
   setColor: (color) => set({ color }),
   setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
@@ -400,6 +414,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ elements: next, selectedIds: newIds })
   },
 
+  addStampElements: (els) => {
+    if (!els.length) return
+    get().beginHistory()
+    const { elements } = get()
+    let z = Math.max(0, ...Object.values(elements).map((e) => e.z))
+    const next = { ...elements }
+    const newIds: string[] = []
+    for (const el of els) {
+      const id = nanoid(8)
+      z += 1
+      next[id] = { ...shiftEl(el, 24, 24), id, z } as BoardElement
+      newIds.push(id)
+    }
+    set({ elements: next, selectedIds: newIds })
+  },
+
+  applyRoster: (squads, vehicles, pool) =>
+    set({ squads: structuredClone(squads), vehicles: structuredClone(vehicles), playerPool: [...pool], activeSquadId: null }),
+
   /** Shift every selected element (except the one being dragged) by (dx, dy). */
   moveSelectionBy: (dx, dy, exceptId) =>
     set((s) => {
@@ -452,6 +485,36 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   sendToBack: (id) => {
     const minZ = Math.min(0, ...Object.values(get().elements).map((e) => e.z))
     get().updateElement(id, { z: minZ - 1 } as Partial<BoardElement>, false)
+  },
+
+  // Swap z with the next element above/below in stacking order.
+  raiseElement: (id) => {
+    const sorted = Object.values(get().elements).sort((a, b) => a.z - b.z)
+    const i = sorted.findIndex((e) => e.id === id)
+    if (i < 0 || i >= sorted.length - 1) return
+    const a = sorted[i]
+    const b = sorted[i + 1]
+    get().beginHistory()
+    set((s) => ({ elements: { ...s.elements, [a.id]: { ...a, z: b.z }, [b.id]: { ...b, z: a.z } } }))
+  },
+  lowerElement: (id) => {
+    const sorted = Object.values(get().elements).sort((a, b) => a.z - b.z)
+    const i = sorted.findIndex((e) => e.id === id)
+    if (i <= 0) return
+    const a = sorted[i]
+    const b = sorted[i - 1]
+    get().beginHistory()
+    set((s) => ({ elements: { ...s.elements, [a.id]: { ...a, z: b.z }, [b.id]: { ...b, z: a.z } } }))
+  },
+  toggleElementHidden: (id) => {
+    const el = get().elements[id]
+    if (!el) return
+    get().updateElement(id, { hidden: !el.hidden } as Partial<BoardElement>, true)
+  },
+  toggleElementLocked: (id) => {
+    const el = get().elements[id]
+    if (!el) return
+    get().updateElement(id, { locked: !el.locked } as Partial<BoardElement>, true)
   },
 
   addSquad: () => {

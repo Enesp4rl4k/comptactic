@@ -12,6 +12,8 @@ export default function AssetPalette() {
   const squads = useBoardStore((s) => s.squads)
   const activeSquadId = useBoardStore((s) => s.activeSquadId)
   const setActiveSquad = useBoardStore((s) => s.setActiveSquad)
+  const placingAssetId = useBoardStore((s) => s.placingAssetId)
+  const setPlacingAsset = useBoardStore((s) => s.setPlacingAsset)
   const [query, setQuery] = useState('')
 
   const q = query.trim().toLowerCase()
@@ -60,7 +62,11 @@ export default function AssetPalette() {
         />
       </div>
 
-      <div className="p-2 text-[11px] text-gray-500">Drag &amp; drop onto the map.</div>
+      <div className="p-2 text-[11px] text-gray-500">
+        {placingAssetId
+          ? 'Click the map to place — Esc to stop.'
+          : 'Click to arm, then click the map. Or drag & drop.'}
+      </div>
 
       <div className="flex-1">
         {ORDER.map((cat) => {
@@ -71,7 +77,15 @@ export default function AssetPalette() {
             <div className="text-[11px] font-semibold text-gray-400 px-1 mb-1">{CATEGORY_LABELS[cat]}</div>
             <div className="grid grid-cols-3 gap-1.5">
               {items.map((a) => (
-                <PaletteAsset key={a.id} a={a} team={team} color={color} squadColor={activeSquad?.color ?? null} />
+                <PaletteAsset
+                  key={a.id}
+                  a={a}
+                  team={team}
+                  color={color}
+                  squadColor={activeSquad?.color ?? null}
+                  armed={placingAssetId === a.id}
+                  onArm={() => setPlacingAsset(placingAssetId === a.id ? null : a.id)}
+                />
               ))}
             </div>
           </div>
@@ -100,11 +114,15 @@ function PaletteAsset({
   team,
   color,
   squadColor,
+  armed,
+  onArm,
 }: {
   a: AssetDef
   team: Team
   color: string
   squadColor: string | null
+  armed: boolean
+  onArm: () => void
 }) {
   const tinted = useTintedSvgUrl(a.icon && squadColor ? `/icons/blue/${a.icon}.svg` : null, squadColor || '#ffffff')
   const variant = iconUrl(a, team)
@@ -115,8 +133,11 @@ function PaletteAsset({
     <div
       draggable
       onDragStart={(e) => e.dataTransfer.setData('assetId', a.id)}
+      onClick={onArm}
       title={a.name}
-      className="flex flex-col items-center gap-1 p-1.5 rounded bg-panel2 border border-edge hover:border-accent cursor-grab active:cursor-grabbing transition-colors"
+      className={`flex flex-col items-center gap-1 p-1.5 rounded border cursor-pointer transition-colors ${
+        armed ? 'bg-white/10 border-white ring-1 ring-white/40' : 'bg-panel2 border-edge hover:border-accent'
+      }`}
     >
       {src ? (
         <img src={src} alt={a.name} draggable={false} className="h-9 w-9 object-contain pointer-events-none" />

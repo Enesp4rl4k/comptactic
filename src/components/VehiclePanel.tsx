@@ -127,8 +127,9 @@ function VehicleCard({
         readOnly
           ? undefined
           : (e) => {
-              const t = e.dataTransfer.types
-              if (t.includes('vehicleMove') || t.includes('squadMove') || t.includes('memberMove') || t.includes('playerName')) {
+              // Browsers lowercase DataTransfer.types, so compare against lowercase keys.
+              const t = Array.from(e.dataTransfer.types).map((x) => x.toLowerCase())
+              if (t.includes('vehiclemove') || t.includes('squadmove') || t.includes('membermove') || t.includes('playername')) {
                 e.preventDefault()
                 if (!dragOver) setDragOver(true)
               }

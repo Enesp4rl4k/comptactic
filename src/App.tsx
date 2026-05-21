@@ -6,15 +6,20 @@ import MapPicker from './components/MapPicker'
 import TacticalBoard from './components/TacticalBoard'
 import SlidesBar from './components/SlidesBar'
 import LineupGrid from './components/LineupGrid'
+import LayersPanel from './components/LayersPanel'
 import LayerInfoPanel from './components/LayerInfoPanel'
 import PlayerPool from './components/PlayerPool'
 import TacticSheet from './components/TacticSheet'
 import AuthModal from './components/AuthModal'
 import PlansModal from './components/PlansModal'
+import BriefingMode from './components/BriefingMode'
+import TemplatesModal from './components/TemplatesModal'
+import { exportSlidesPDF, exportSlidesPNG } from './lib/exportSlides'
 import { createShare, getShare } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { startCollab, getRoomId } from './lib/collab'
+import { usePresence } from './lib/presence'
 import type { BoardSnapshot } from './types'
 import { useBoardStore } from './store/useBoardStore'
 import { MAP_BY_ID } from './data/maps'
@@ -32,6 +37,8 @@ export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [plansOpen, setPlansOpen] = useState(false)
+  const [briefingOpen, setBriefingOpen] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   const [currentTitle, setCurrentTitle] = useState('Untitled plan')
   const [toast, setToast] = useState<string | null>(null)
@@ -101,6 +108,16 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // presence: join the room, default the display name from the signed-in email
+  useEffect(() => {
+    const stop = usePresence.getState().start(getRoomId())
+    return stop
+  }, [])
+  useEffect(() => {
+    const p = usePresence.getState()
+    if (!p.name && user?.email) p.setName(user.email.split('@')[0])
+  }, [user])
 
   // autosave (debounced)
   useEffect(() => {
@@ -174,11 +191,20 @@ export default function App() {
         <div className="ml-auto flex items-center gap-1.5">
           <button className="btn" onClick={() => downloadJSON(store.toSnapshot())}>Save</button>
           <button className="btn" onClick={onImport}>Load</button>
-          <button className="btn" onClick={() => exportPNG()}>PNG</button>
+          <button className="btn" onClick={() => setTemplatesOpen(true)} title="Templates &amp; library">Templates</button>
+          {view === 'board' && (
+            <button className="btn" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">▶ Briefing</button>
+          )}
+          <ExportMenu
+            onPNG={() => exportPNG()}
+            onPDF={async () => { flash('Exporting PDF…'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
+            onAllPNG={async () => { flash('Exporting PNG…'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
+          />
           <button className="btn btn-success" onClick={onShare}>Share</button>
           {isSupabaseConfigured && (
             <button className="btn" onClick={() => setPlansOpen(true)}>☁ Plans</button>
           )}
+          <OnlineBar />
           <div className="mx-1 h-6 w-px bg-edge" />
           {user ? (
             <UserMenu email={user.email ?? 'Account'} onSignOut={() => signOut()} />
@@ -195,8 +221,9 @@ export default function App() {
         <div className="flex flex-1 min-h-0">
           <RosterPanel />
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 relative">
               <TacticalBoard />
+              <LayersPanel />
             </div>
             <SlidesBar />
           </div>
@@ -235,10 +262,71 @@ export default function App() {
         />
       )}
 
+      {briefingOpen && <BriefingMode onClose={() => setBriefingOpen(false)} />}
+      {templatesOpen && <TemplatesModal onClose={() => setTemplatesOpen(false)} flash={flash} />}
+
       {toast && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-panel2 border border-edge text-white text-sm px-4 py-2 rounded shadow-lg z-50">
           {toast}
         </div>
+      )}
+    </div>
+  )
+}
+
+// Avatars of everyone in the same room. Click your own to set a display name.
+function OnlineBar() {
+  const peers = usePresence((s) => s.peers)
+  const name = usePresence((s) => s.name)
+  const color = usePresence((s) => s.color)
+  const setName = usePresence((s) => s.setName)
+  const others = Object.values(peers)
+  const initial = (n: string) => (n.trim().charAt(0) || '?').toUpperCase()
+
+  return (
+    <div className="flex items-center -space-x-1.5 mr-1" title={`${others.length + 1} online`}>
+      <button
+        onClick={() => {
+          const n = window.prompt('Your display name:', name)
+          if (n != null) setName(n.trim())
+        }}
+        className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel cursor-pointer"
+        style={{ background: color }}
+        title={`You${name ? ` · ${name}` : ' · click to set name'}`}
+      >
+        {initial(name || 'You')}
+      </button>
+      {others.slice(0, 5).map((p) => (
+        <div
+          key={p.id}
+          className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel"
+          style={{ background: p.color }}
+          title={p.name}
+        >
+          {initial(p.name)}
+        </div>
+      ))}
+      {others.length > 5 && <span className="pl-2.5 text-xs text-gray-400">+{others.length - 5}</span>}
+    </div>
+  )
+}
+
+function ExportMenu({ onPNG, onPDF, onAllPNG }: { onPNG: () => void; onPDF: () => void; onAllPNG: () => void }) {
+  const [open, setOpen] = useState(false)
+  const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer'
+  const run = (fn: () => void) => { setOpen(false); fn() }
+  return (
+    <div className="relative">
+      <button className="btn" onClick={() => setOpen((v) => !v)} title="Export">Export ▾</button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1.5 z-50 w-52 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
+            <button className={item} onClick={() => run(onPNG)}>PNG · current slide</button>
+            <button className={item} onClick={() => run(onPDF)}>PDF · all slides</button>
+            <button className={item} onClick={() => run(onAllPNG)}>PNG · all slides</button>
+          </div>
+        </>
       )}
     </div>
   )

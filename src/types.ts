@@ -35,6 +35,12 @@ interface ElementBase {
   rotation: number
   /** Optional link to a roster squad; lets squad color changes recolor this mark. */
   rosterSquadId?: string
+  /** Hidden elements are not rendered (toggled from the Layers panel). */
+  hidden?: boolean
+  /** Locked elements can't be selected/dragged on the board. */
+  locked?: boolean
+  /** Optional display name shown in the Layers panel. */
+  name?: string
 }
 
 /** Polyline-based elements store absolute stage coordinates in `points`. */
