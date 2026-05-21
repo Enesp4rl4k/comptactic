@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
 import { loadTemplates, saveStamp, saveRoster, deleteTemplate, renameTemplate, type Template } from '../lib/templates'
-import { BUILTIN_TEMPLATES, isBuiltin } from '../data/templateLibrary'
 
 export default function TemplatesModal({ onClose, flash }: { onClose: () => void; flash: (m: string) => void }) {
   const [list, setList] = useState<Template[]>(() => loadTemplates())
@@ -17,9 +16,7 @@ export default function TemplatesModal({ onClose, flash }: { onClose: () => void
   const applyRoster = useBoardStore((s) => s.applyRoster)
 
   const q = query.trim().toLowerCase()
-  const match = (t: Template) => t.kind === tab && (!q || t.name.toLowerCase().includes(q))
-  const userShown = list.filter(match)
-  const builtinShown = BUILTIN_TEMPLATES.filter(match)
+  const userShown = list.filter((t) => t.kind === tab && (!q || t.name.toLowerCase().includes(q)))
 
   const onSaveStamp = () => {
     const els = selectedIds.map((id) => elements[id]).filter(Boolean)
@@ -102,72 +99,50 @@ export default function TemplatesModal({ onClose, flash }: { onClose: () => void
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-4">
-          {/* user templates */}
-          <div>
-            <div className="text-[11px] font-semibold tracking-wide text-gray-400 px-1 mb-1.5">YOUR TEMPLATES</div>
-            {userShown.length === 0 ? (
-              <div className="text-gray-500 text-xs px-1 py-3">
-                {tab === 'stamp'
-                  ? 'Select marks on the board, then “Save selection as stamp”.'
-                  : 'Build squads/vehicles, then “Save current roster”.'}
-              </div>
-            ) : (
-              <div className="grid gap-2">{userShown.map((t) => renderCard(t))}</div>
-            )}
-          </div>
-
-          {/* built-in starter library */}
-          <div>
-            <div className="text-[11px] font-semibold tracking-wide text-gray-400 px-1 mb-1.5">STARTER LIBRARY</div>
-            {builtinShown.length === 0 ? (
-              <div className="text-gray-600 text-xs px-1 py-2">No matches.</div>
-            ) : (
-              <div className="grid gap-2">{builtinShown.map((t) => renderCard(t))}</div>
-            )}
-          </div>
+        <div className="flex-1 overflow-y-auto p-3">
+          {userShown.length === 0 ? (
+            <div className="text-center text-gray-500 text-sm py-10">
+              {tab === 'stamp'
+                ? 'No stamps yet. Select marks on the board, then “Save selection as stamp”.'
+                : 'No roster setups yet. Build squads/vehicles, then “Save current roster”.'}
+            </div>
+          ) : (
+            <div className="grid gap-2">{userShown.map((t) => renderCard(t))}</div>
+          )}
         </div>
       </div>
     </div>
   )
 
   function renderCard(t: Template) {
-    const builtin = isBuiltin(t.id)
     return (
       <div key={t.id} className="flex items-center gap-3 p-3 rounded-md bg-panel2 border border-edge">
         <div className="flex-1 min-w-0">
-          <div className="font-medium truncate flex items-center gap-1.5">
-            {t.name}
-            {builtin && <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400">BUILT-IN</span>}
-          </div>
+          <div className="font-medium truncate">{t.name}</div>
           <div className="text-[11px] text-gray-500">
             {t.kind === 'stamp'
               ? `${t.elements.length} elements`
               : `${t.squads.length} squads · ${t.vehicles.length} vehicles${t.playerPool.length ? ` · ${t.playerPool.length} in pool` : ''}`}
-            {!builtin && ` · ${new Date(t.createdAt).toLocaleDateString()}`}
+            {` · ${new Date(t.createdAt).toLocaleDateString()}`}
           </div>
         </div>
         <button className="btn btn-primary h-7 text-xs" onClick={() => apply(t)}>
           {t.kind === 'stamp' ? 'Place' : 'Load'}
         </button>
-        {!builtin && (
-          <>
-            <button
-              className="btn h-7 text-xs"
-              onClick={() => { const n = window.prompt('Rename template:', t.name); if (n && n.trim()) setList(renameTemplate(t.id, n.trim())) }}
-              title="Rename"
-            >
-              ✎
-            </button>
-            <button
-              className="btn h-7 text-xs"
-              onClick={() => { if (confirm('Delete this template?')) setList(deleteTemplate(t.id)) }}
-              title="Delete"
-            >
-              🗑
-            </button>
-          </>
-        )}
+        <button
+          className="btn h-7 text-xs"
+          onClick={() => { const n = window.prompt('Rename template:', t.name); if (n && n.trim()) setList(renameTemplate(t.id, n.trim())) }}
+          title="Rename"
+        >
+          ✎
+        </button>
+        <button
+          className="btn h-7 text-xs"
+          onClick={() => { if (confirm('Delete this template?')) setList(deleteTemplate(t.id)) }}
+          title="Delete"
+        >
+          🗑
+        </button>
       </div>
     )
   }
