@@ -17,7 +17,7 @@ function memberInitials(name: string): string {
 // Excel-style line-up: squads = columns, players = rows.
 // Rows grow dynamically: a new empty row opens as players are added (max 9).
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad, moveMember } =
+  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad, moveMember, reorderSquads } =
     useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
@@ -87,6 +87,7 @@ export default function LineupGrid() {
                 onRemoveSlot={(i) => removeMemberSlot(sq.id, i)}
                 onAssign={(name) => assignPlayerToSquad(name, sq.id)}
                 onMoveHere={(fromSquadId, memberId) => moveMember(fromSquadId, memberId, sq.id)}
+                onReorder={(fromSquadId) => reorderSquads(fromSquadId, sq.id)}
               />
             ))}
 
@@ -115,6 +116,7 @@ function SquadColumn({
   onRemoveSlot,
   onAssign,
   onMoveHere,
+  onReorder,
 }: {
   squad: RosterSquad
   rows: number
@@ -125,6 +127,7 @@ function SquadColumn({
   onRemoveSlot: (index: number) => void
   onAssign: (name: string) => void
   onMoveHere: (fromSquadId: string, memberId: string) => void
+  onReorder: (fromSquadId: string) => void
 }) {
   const accent = squad.color
   const count = squad.members.length
@@ -143,12 +146,17 @@ function SquadColumn({
   return (
     <div
       className={`shrink-0 w-56 rounded border bg-panel overflow-hidden transition-colors ${
-        dragOver && !full ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
+        dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
       }`}
       onDragOver={(e) => {
-        if (full) return
-        e.preventDefault()
-        if (!dragOver) setDragOver(true)
+        const t = e.dataTransfer.types
+        const isSquad = t.includes('squadMove')
+        // accept squad reorder always; accept player/member only if not full
+        if (!isSquad && full) return
+        if (isSquad || t.includes('playerName') || t.includes('memberMove')) {
+          e.preventDefault()
+          if (!dragOver) setDragOver(true)
+        }
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
@@ -156,6 +164,12 @@ function SquadColumn({
       onDrop={(e) => {
         e.preventDefault()
         setDragOver(false)
+        // reorder squads
+        const sqMove = e.dataTransfer.getData('squadMove')
+        if (sqMove) {
+          if (sqMove !== squad.id) onReorder(sqMove)
+          return
+        }
         const name = e.dataTransfer.getData('playerName')
         if (name) {
           onAssign(name)
@@ -178,10 +192,10 @@ function SquadColumn({
           draggable
           onDragStart={(e) => {
             e.dataTransfer.setData('squadMove', squad.id)
-            e.dataTransfer.effectAllowed = 'copy'
+            e.dataTransfer.effectAllowed = 'copyMove'
           }}
-          title="Drag squad onto a vehicle"
-          className="shrink-0 text-gray-500 text-xs cursor-grab active:cursor-grabbing select-none"
+          title="Drag: reorder squads, or drop onto a vehicle"
+          className="shrink-0 grid place-items-center h-5 w-4 -ml-0.5 rounded text-gray-400 hover:text-white hover:bg-edge text-sm cursor-grab active:cursor-grabbing select-none"
         >
           ⠿
         </span>

@@ -59,6 +59,18 @@ function freshSlides(): Slide[] {
   return [{ id: nanoid(6), name: '1', elements: {} }]
 }
 
+/** Move the item with `fromId` to the position of `toId`. */
+function reorderById<T extends { id: string }>(arr: T[], fromId: string, toId: string): T[] {
+  if (fromId === toId) return arr
+  const from = arr.findIndex((x) => x.id === fromId)
+  const to = arr.findIndex((x) => x.id === toId)
+  if (from < 0 || to < 0) return arr
+  const copy = [...arr]
+  const [moved] = copy.splice(from, 1)
+  copy.splice(to, 0, moved)
+  return copy
+}
+
 /** Returns a copy of an element shifted by (dx, dy), handling point- and xy-based shapes. */
 function shiftEl(el: BoardElement, dx: number, dy: number): BoardElement {
   const e = { ...el } as BoardElement & { x?: number; y?: number; points?: number[] }
@@ -179,6 +191,8 @@ interface BoardState {
   removeMemberSlot: (squadId: string, index: number) => void
   moveMember: (fromSquadId: string, memberId: string, toSquadId: string) => void
   memberToPool: (squadId: string, memberId: string) => void
+  reorderSquads: (fromId: string, toId: string) => void
+  reorderVehicles: (fromId: string, toId: string) => void
 
   // player pool (paste sign-ups, then distribute to squads)
   addToPool: (names: string[]) => void
@@ -559,6 +573,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }),
 
   clearPool: () => set({ playerPool: [] }),
+
+  reorderSquads: (fromId, toId) => set((s) => ({ squads: reorderById(s.squads, fromId, toId) })),
+  reorderVehicles: (fromId, toId) => set((s) => ({ vehicles: reorderById(s.vehicles, fromId, toId) })),
 
   assignPlayerToSquad: (name, squadId) =>
     set((s) => {

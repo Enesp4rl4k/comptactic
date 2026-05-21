@@ -87,12 +87,18 @@ function VehicleCard({
   const assignSquadToVehicle = useBoardStore((s) => s.assignSquadToVehicle)
   const addVehicleCrew = useBoardStore((s) => s.addVehicleCrew)
   const removeVehicleCrew = useBoardStore((s) => s.removeVehicleCrew)
+  const reorderVehicles = useBoardStore((s) => s.reorderVehicles)
   const asset = ASSET_BY_ID[v.assetId]
   const [dragOver, setDragOver] = useState(false)
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
+    const veh = e.dataTransfer.getData('vehicleMove')
+    if (veh) {
+      if (veh !== v.id) reorderVehicles(veh, v.id)
+      return
+    }
     const sq = e.dataTransfer.getData('squadMove')
     if (sq) {
       assignSquadToVehicle(v.id, sq)
@@ -122,7 +128,7 @@ function VehicleCard({
           ? undefined
           : (e) => {
               const t = e.dataTransfer.types
-              if (t.includes('squadMove') || t.includes('memberMove') || t.includes('playerName')) {
+              if (t.includes('vehicleMove') || t.includes('squadMove') || t.includes('memberMove') || t.includes('playerName')) {
                 e.preventDefault()
                 if (!dragOver) setDragOver(true)
               }
@@ -134,6 +140,19 @@ function VehicleCard({
       onDrop={readOnly ? undefined : onDrop}
     >
       <div className="flex items-center gap-2">
+        {!readOnly && (
+          <span
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('vehicleMove', v.id)
+              e.dataTransfer.effectAllowed = 'move'
+            }}
+            title="Drag to reorder vehicles"
+            className="shrink-0 grid place-items-center h-5 w-4 rounded text-gray-500 hover:text-white hover:bg-edge text-sm cursor-grab active:cursor-grabbing select-none"
+          >
+            ⠿
+          </span>
+        )}
         {iconUrl(asset, 'blufor') ? (
           <img src={iconUrl(asset, 'blufor')!} alt="" className="h-6 w-6 object-contain" />
         ) : (
