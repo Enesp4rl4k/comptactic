@@ -1,0 +1,27 @@
+src/types.ts
+  s_f9303379803485::t_e8dfc17a7cefe3 169-170
+src/components/VehiclePanel.tsx
+  s_f9303379803485::t_f346edf9e5c9fe 87-89,91-113,116-135
+  s_f9303379803485::t_fbf44929507a6a 183-198
+src/store/useBoardStore.ts
+  s_f9303379803485::t_2d5d5d6685ab9d 195-197
+  s_f9303379803485::t_0f41412dd3183c 611-631
+src/components/LineupGrid.tsx
+  s_f9303379803485::t_9914a4a3a4f447 177-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "eafaf2ea806f046b7ca97a58af74f654adf4c79b",
+  "prompts": {},
+  "sessions": {
+    "s_f9303379803485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97b315-d7ef-409f-a519-8cf75a56c9ee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
