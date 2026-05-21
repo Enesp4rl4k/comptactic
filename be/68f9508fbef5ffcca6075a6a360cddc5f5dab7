@@ -1,0 +1,26 @@
+src/components/TacticalBoard.tsx
+  s_f9303379803485::t_672003f6df7338 884-890
+  s_f9303379803485::t_74cc3475777ec9 909-910,918
+  s_f9303379803485::t_5ad238cd588a68 930,938-952
+src/components/VehiclePanel.tsx
+  s_f9303379803485::t_f2b0ca684d6249 156
+  s_f9303379803485::t_38a79fac739680 18-19,21
+src/components/LayerInfoPanel.tsx
+  s_f9303379803485::t_47f10b808aca11 88-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "be68f9508fbef5ffcca6075a6a360cddc5f5dab7",
+  "prompts": {},
+  "sessions": {
+    "s_f9303379803485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97b315-d7ef-409f-a519-8cf75a56c9ee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
