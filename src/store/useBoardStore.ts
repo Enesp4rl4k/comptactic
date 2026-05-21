@@ -164,7 +164,6 @@ interface BoardState {
   removeFromPool: (name: string) => void
   clearPool: () => void
   assignPlayerToSquad: (name: string, squadId: string) => void
-  autoDistribute: () => void
 
   // vehicles
   addVehicle: (assetId: string) => void
@@ -462,24 +461,6 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         ),
         playerPool: pool,
       }
-    }),
-
-  autoDistribute: () =>
-    set((s) => {
-      if (!s.squads.length) return s
-      const squads = s.squads.map((sq) => ({ ...sq, members: [...sq.members] }))
-      const remaining: string[] = []
-      for (const name of s.playerPool) {
-        const target = squads
-          .filter((sq) => sq.members.length < MAX_MEMBERS)
-          .sort((a, b) => a.members.length - b.members.length)[0]
-        if (!target) {
-          remaining.push(name)
-          continue
-        }
-        target.members.push({ id: nanoid(5), name, role: target.members.length === 0 ? 'sl' : 'rifleman' })
-      }
-      return { squads, playerPool: remaining }
     }),
 
   addVehicle: (assetId) =>

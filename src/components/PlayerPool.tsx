@@ -9,7 +9,6 @@ export default function PlayerPool() {
   const addToPool = useBoardStore((s) => s.addToPool)
   const removeFromPool = useBoardStore((s) => s.removeFromPool)
   const clearPool = useBoardStore((s) => s.clearPool)
-  const autoDistribute = useBoardStore((s) => s.autoDistribute)
 
   const [text, setText] = useState('')
   const [open, setOpen] = useState(true)
@@ -50,9 +49,6 @@ export default function PlayerPool() {
             />
             <div className="flex flex-col gap-1.5 shrink-0">
               <button onClick={onAdd} className="btn btn-primary h-8 px-3 text-xs">Add</button>
-              <button onClick={autoDistribute} disabled={!pool.length || !squads.length} className="btn h-8 px-3 text-xs" title="Spread players evenly across squads">
-                Auto-fill
-              </button>
               <button onClick={clearPool} disabled={!pool.length} className="btn h-8 px-3 text-xs">Clear</button>
             </div>
           </div>
@@ -90,7 +86,7 @@ export default function PlayerPool() {
           )}
 
           {squads.length === 0 && pool.length > 0 && (
-            <div className="text-[11px] text-gray-600">Add squads first, then assign or auto-fill.</div>
+            <div className="text-[11px] text-gray-600">Add squads first, then drag players into them.</div>
           )}
         </div>
       )}

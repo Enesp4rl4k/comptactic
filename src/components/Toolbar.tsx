@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
 import type { ToolId, Team } from '../types'
 
@@ -20,10 +21,7 @@ const TEAMS: { id: Team; label: string; color: string }[] = [
 ]
 
 export default function Toolbar() {
-  const {
-    tool, setTool, team, setTeam, color, setColor, strokeWidth, setStrokeWidth,
-    palette, addPaletteColor, removePaletteColor, undo, redo, clearBoard,
-  } = useBoardStore()
+  const { tool, setTool, team, setTeam, strokeWidth, setStrokeWidth, undo, redo, clearBoard } = useBoardStore()
 
   return (
     <div className="flex items-center gap-3 px-3 py-1.5 bg-panel border-b border-edge">
@@ -66,43 +64,7 @@ export default function Toolbar() {
 
       <Divider />
 
-      <div className="flex items-center gap-1.5">
-        {palette.map((c) => (
-          <button
-            key={c}
-            onClick={() => setColor(c)}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              removePaletteColor(c)
-            }}
-            className={`h-6 w-6 rounded-full border-2 transition-transform cursor-pointer hover:scale-110 ${
-              color === c ? 'border-white ring-2 ring-white/20' : 'border-black/40'
-            }`}
-            style={{ background: c }}
-            title={`${c} — click to use, right-click to remove`}
-          />
-        ))}
-        {/* custom color picker + add to palette */}
-        <label
-          className="relative h-6 w-6 rounded-full border-2 border-dashed border-gray-500 grid place-items-center text-gray-400 text-xs cursor-pointer hover:border-white hover:text-white"
-          title="Pick a custom color"
-        >
-          +
-          <input
-            type="color"
-            value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'}
-            onChange={(e) => setColor(e.target.value)}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-          />
-        </label>
-        <button
-          onClick={() => addPaletteColor(color)}
-          title="Save current color to palette"
-          className="h-6 px-1.5 rounded border border-edge text-[11px] text-gray-300 hover:bg-edge hover:text-white cursor-pointer"
-        >
-          Save
-        </button>
-      </div>
+      <ColorMenu />
 
       <Divider />
 
@@ -138,6 +100,66 @@ export default function Toolbar() {
 
 function Divider() {
   return <div className="h-6 w-px bg-edge" />
+}
+
+// Compact color control: one swatch button that opens a palette popover.
+function ColorMenu() {
+  const color = useBoardStore((s) => s.color)
+  const setColor = useBoardStore((s) => s.setColor)
+  const palette = useBoardStore((s) => s.palette)
+  const addPaletteColor = useBoardStore((s) => s.addPaletteColor)
+  const removePaletteColor = useBoardStore((s) => s.removePaletteColor)
+  const [open, setOpen] = useState(false)
+  const hex = /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="Color"
+        className="h-8 w-8 grid place-items-center rounded-md border border-edge bg-panel2 hover:bg-edge cursor-pointer"
+      >
+        <span className="h-5 w-5 rounded-full border border-black/40" style={{ background: color }} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-9 z-50 w-44 rounded-md border border-edge bg-panel2 p-2 shadow-panel">
+            <div className="grid grid-cols-6 gap-1.5">
+              {palette.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    removePaletteColor(c)
+                  }}
+                  className={`h-5 w-5 rounded-full border-2 cursor-pointer hover:scale-110 transition-transform ${
+                    color === c ? 'border-white' : 'border-black/40'
+                  }`}
+                  style={{ background: c }}
+                  title={`${c} — click to use, right-click to remove`}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-1.5">
+              <input
+                type="color"
+                value={hex}
+                onChange={(e) => setColor(e.target.value)}
+                title="Custom color"
+                className="h-7 w-7 rounded cursor-pointer bg-transparent border border-edge p-0"
+              />
+              <button onClick={() => addPaletteColor(color)} className="btn h-7 px-2 text-xs flex-1" title="Save current color to palette">
+                Save to palette
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 function ActionBtn({

@@ -10,7 +10,7 @@ const MAX_SLOTS = 9 // Squad holds at most 9 players in-game
 // Excel-style line-up: squads = columns, players = rows.
 // Rows grow dynamically: a new empty row opens as players are added (max 9).
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad } =
+  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad } =
     useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
@@ -74,6 +74,7 @@ export default function LineupGrid() {
                 squad={sq}
                 rows={maxRows}
                 onUpdate={(p) => updateSquad(sq.id, p)}
+                onColor={(c) => setSquadColor(sq.id, c)}
                 onRemove={() => removeSquad(sq.id)}
                 onSlot={(i, p) => setMemberSlot(sq.id, i, p)}
                 onRemoveSlot={(i) => removeMemberSlot(sq.id, i)}
@@ -100,6 +101,7 @@ function SquadColumn({
   squad,
   rows,
   onUpdate,
+  onColor,
   onRemove,
   onSlot,
   onRemoveSlot,
@@ -108,6 +110,7 @@ function SquadColumn({
   squad: RosterSquad
   rows: number
   onUpdate: (patch: Partial<RosterSquad>) => void
+  onColor: (color: string) => void
   onRemove: () => void
   onSlot: (index: number, patch: Partial<{ name: string; role: string }>) => void
   onRemoveSlot: (index: number) => void
@@ -149,7 +152,13 @@ function SquadColumn({
     >
       {/* header */}
       <div className="flex items-center gap-1 px-2 h-[42px]" style={{ background: accent + '22', borderBottom: `2px solid ${accent}` }}>
-        <span className="h-3 w-3 rounded-full shrink-0" style={{ background: accent }} />
+        <input
+          type="color"
+          value={accent}
+          onChange={(e) => onColor(e.target.value)}
+          title="Squad color"
+          className="h-4 w-4 shrink-0 rounded cursor-pointer bg-transparent border-0 p-0"
+        />
         <input
           value={squad.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
