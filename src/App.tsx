@@ -26,8 +26,6 @@ import { MAP_BY_ID } from './data/maps'
 import {
   saveLocal,
   loadLocal,
-  downloadJSON,
-  importJSON,
   encodeToHash,
   decodeFromHash,
   exportPNG,
@@ -157,11 +155,10 @@ export default function App() {
     await copyLink(encodeToHash(store.toSnapshot()), 'Share link copied to clipboard')
   }
 
-  // Save the current plan to the cloud (create or update). Falls back to a JSON
-  // download when Supabase isn't configured.
+  // Save the current plan to the cloud (create or update).
   const onSave = async () => {
     if (!isSupabaseConfigured) {
-      downloadJSON(store.toSnapshot())
+      flash('Cloud saving is not configured')
       return
     }
     if (!user) {
@@ -182,16 +179,7 @@ export default function App() {
         flash('Plan saved to cloud')
       }
     } catch {
-      flash('Could not save — downloading JSON instead')
-      downloadJSON(store.toSnapshot())
-    }
-  }
-
-  const onImport = async () => {
-    const snap = await importJSON()
-    if (snap) {
-      store.loadSnapshot(snap)
-      flash('Plan loaded')
+      flash('Could not save — check your connection / sign-in')
     }
   }
 
@@ -219,8 +207,7 @@ export default function App() {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <button className="btn btn-success" onClick={onSave} title={isSupabaseConfigured ? 'Save to cloud' : 'Download JSON'}>Save</button>
-          <button className="btn" onClick={onImport} title="Import a .json plan">Load</button>
+          <button className="btn btn-success" onClick={onSave} title="Save to cloud">Save</button>
           <button className="btn" onClick={() => setTemplatesOpen(true)} title="Templates &amp; library">Templates</button>
           {view === 'board' && (
             <button className="btn" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">▶ Briefing</button>
@@ -229,7 +216,6 @@ export default function App() {
             onPNG={() => exportPNG()}
             onPDF={async () => { flash('Exporting PDF…'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
             onAllPNG={async () => { flash('Exporting PNG…'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
-            onJSON={() => downloadJSON(store.toSnapshot())}
           />
           <button className="btn btn-success" onClick={onShare}>Share</button>
           {isSupabaseConfigured && (
@@ -342,7 +328,7 @@ function OnlineBar() {
   )
 }
 
-function ExportMenu({ onPNG, onPDF, onAllPNG, onJSON }: { onPNG: () => void; onPDF: () => void; onAllPNG: () => void; onJSON: () => void }) {
+function ExportMenu({ onPNG, onPDF, onAllPNG }: { onPNG: () => void; onPDF: () => void; onAllPNG: () => void }) {
   const [open, setOpen] = useState(false)
   const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer'
   const run = (fn: () => void) => { setOpen(false); fn() }
@@ -356,8 +342,6 @@ function ExportMenu({ onPNG, onPDF, onAllPNG, onJSON }: { onPNG: () => void; onP
             <button className={item} onClick={() => run(onPNG)}>PNG · current slide</button>
             <button className={item} onClick={() => run(onPDF)}>PDF · all slides</button>
             <button className={item} onClick={() => run(onAllPNG)}>PNG · all slides</button>
-            <div className="h-px bg-edge" />
-            <button className={item} onClick={() => run(onJSON)}>JSON file · download</button>
           </div>
         </>
       )}
