@@ -69,8 +69,8 @@ export default function PlayerPool() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Paste players from sign-ups (one per line)…"
-              rows={3}
-              className="input flex-1 resize-y min-h-[58px] font-mono text-[12px]"
+              rows={2}
+              className="input flex-1 resize-y min-h-[42px] font-mono text-[12px]"
             />
             <div className="flex flex-col gap-1.5 shrink-0">
               <button onClick={onAdd} className="btn btn-primary h-8 px-3 text-xs">Add</button>
@@ -79,7 +79,7 @@ export default function PlayerPool() {
           </div>
 
           {pool.length > 0 && (
-            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto pr-1">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1 max-h-44 overflow-y-auto pr-1">
               {pool.map((name, i) => (
                 <div
                   key={`${name}-${i}`}
@@ -89,20 +89,19 @@ export default function PlayerPool() {
                     e.dataTransfer.effectAllowed = 'move'
                   }}
                   title={`${name} — drag onto a squad`}
-                  className="group flex items-center gap-2 rounded-md bg-panel2 border border-edge px-2 py-1 cursor-grab active:cursor-grabbing hover:border-accent"
+                  className="group flex items-center gap-1.5 rounded bg-panel2 border border-edge px-1.5 py-0.5 cursor-grab active:cursor-grabbing hover:border-accent"
                 >
                   <div
-                    className="h-7 w-7 shrink-0 rounded-full grid place-items-center text-[11px] font-bold text-white ring-1 ring-black/40"
+                    className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9px] font-bold text-white ring-1 ring-black/40"
                     style={{ background: colorFor(name) }}
                   >
                     {initials(name)}
                   </div>
-                  <span className="flex-1 min-w-0 truncate text-[12px] text-gray-200">{name}</span>
-                  <span className="shrink-0 text-gray-600 text-xs select-none">⠿</span>
+                  <span className="flex-1 min-w-0 truncate text-[11px] text-gray-200">{name}</span>
                   <button
                     onClick={() => removeFromPool(name)}
                     title="Remove"
-                    className="shrink-0 text-gray-500 hover:text-red-400 text-sm leading-none cursor-pointer"
+                    className="shrink-0 text-gray-600 hover:text-red-400 text-xs leading-none cursor-pointer opacity-0 group-hover:opacity-100"
                   >
                     ×
                   </button>
