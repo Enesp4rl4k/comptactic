@@ -1,0 +1,20 @@
+src/App.tsx
+  s_f9303379803485::t_d59106456372d1 147-148,150-151,156,162-163
+  s_f9303379803485::t_74ed4a744edf28 228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "6b45d60ea2b589f7d61af7216194829aa4f72fea",
+  "prompts": {},
+  "sessions": {
+    "s_f9303379803485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97b315-d7ef-409f-a519-8cf75a56c9ee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
