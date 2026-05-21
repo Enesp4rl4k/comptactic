@@ -21,7 +21,8 @@ const TEAMS: { id: Team; label: string; color: string }[] = [
 ]
 
 export default function Toolbar() {
-  const { tool, setTool, team, setTeam, strokeWidth, setStrokeWidth, undo, redo, clearBoard } = useBoardStore()
+  const { tool, setTool, team, setTeam, strokeWidth, setStrokeWidth, snapToGrid, toggleSnap, undo, redo, clearBoard } =
+    useBoardStore()
 
   return (
     <div className="flex items-center gap-3 px-3 py-1.5 bg-panel border-b border-edge">
@@ -80,6 +81,18 @@ export default function Toolbar() {
         />
         <span className="w-4 text-gray-300 tabular-nums">{strokeWidth}</span>
       </label>
+
+      <Divider />
+
+      <button
+        onClick={toggleSnap}
+        title="Snap to grid"
+        className={`h-9 px-2.5 rounded-md text-xs font-medium border transition-colors cursor-pointer ${
+          snapToGrid ? 'bg-accent border-accent text-white' : 'bg-panel2 border-edge text-gray-400 hover:text-white'
+        }`}
+      >
+        # Snap
+      </button>
 
       <div className="ml-auto flex gap-1">
         <ActionBtn onClick={undo} title="Undo (Ctrl+Z)">↶</ActionBtn>

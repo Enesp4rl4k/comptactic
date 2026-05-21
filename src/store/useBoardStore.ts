@@ -118,6 +118,8 @@ interface BoardState {
   selectedIds: string[]
   /** Internal clipboard for copy/paste of elements. */
   clipboard: BoardElement[]
+  /** Snap element drags to the grid. */
+  snapToGrid: boolean
   // history
   past: Record<string, BoardElement>[]
   future: Record<string, BoardElement>[]
@@ -156,6 +158,8 @@ interface BoardState {
   copySelection: () => void
   paste: () => void
   duplicateSelection: () => void
+  moveSelectionBy: (dx: number, dy: number, exceptId: string) => void
+  toggleSnap: () => void
   clearBoard: () => void
 
   beginHistory: () => void
@@ -213,6 +217,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   elements: {},
   selectedIds: [],
   clipboard: [],
+  snapToGrid: false,
   past: [],
   future: [],
   squads: [],
@@ -374,6 +379,21 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
     set({ elements: next, selectedIds: newIds })
   },
+
+  /** Shift every selected element (except the one being dragged) by (dx, dy). */
+  moveSelectionBy: (dx, dy, exceptId) =>
+    set((s) => {
+      if (s.selectedIds.length < 2) return s
+      const next = { ...s.elements }
+      for (const id of s.selectedIds) {
+        if (id === exceptId) continue
+        const el = next[id]
+        if (el) next[id] = shiftEl(el, dx, dy)
+      }
+      return { elements: next }
+    }),
+
+  toggleSnap: () => set((s) => ({ snapToGrid: !s.snapToGrid })),
 
   clearBoard: () => {
     get().beginHistory()

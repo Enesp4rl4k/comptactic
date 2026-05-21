@@ -23,6 +23,36 @@ import type { BoardElement, IconElement, PolyElement } from '../types'
 
 export const MAP_SIZE = 1024
 const PEN_MIN_DIST = 3 // stage units between captured freehand points
+const GRID_STEP = MAP_SIZE / 32 // snap-to-grid increment
+const snapVal = (v: number) => Math.round(v / GRID_STEP) * GRID_STEP
+
+/** Commit a drag of an x/y element: applies snap + moves the rest of the selection. */
+function commitXYDrag(node: Konva.Node, el: { id: string; x: number; y: number }, change: (p: Partial<BoardElement>) => void) {
+  const st = useBoardStore.getState()
+  let nx = node.x()
+  let ny = node.y()
+  if (st.snapToGrid) {
+    nx = snapVal(nx)
+    ny = snapVal(ny)
+    node.position({ x: nx, y: ny })
+  }
+  change({ x: nx, y: ny } as Partial<BoardElement>)
+  if (st.selectedIds.length > 1 && st.selectedIds.includes(el.id)) st.moveSelectionBy(nx - el.x, ny - el.y, el.id)
+}
+
+/** Commit a drag of a points-based element: applies snap + moves the rest of the selection. */
+function commitPointsDrag(node: Konva.Node, el: { id: string }, points: number[], change: (p: Partial<BoardElement>) => void) {
+  const st = useBoardStore.getState()
+  let dx = node.x()
+  let dy = node.y()
+  if (st.snapToGrid) {
+    dx = snapVal(dx)
+    dy = snapVal(dy)
+  }
+  node.position({ x: 0, y: 0 })
+  change({ points: points.map((p, i) => (i % 2 === 0 ? p + dx : p + dy)) } as Partial<BoardElement>)
+  if (st.selectedIds.length > 1 && st.selectedIds.includes(el.id)) st.moveSelectionBy(dx, dy, el.id)
+}
 
 interface Draft {
   type: 'arrow' | 'line' | 'pen' | 'measure' | 'rect' | 'circle'
@@ -78,7 +108,15 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
 
   // stable callbacks for memoized elements
   const handleSelect = useCallback(
-    (id: string, additive = false) => (additive ? toggleSelection(id) : setSelection([id])),
+    (id: string, additive = false) => {
+      if (additive) {
+        toggleSelection(id)
+        return
+      }
+      // Clicking an element that's already part of a multi-selection keeps the
+      // group (so it can be dragged together); otherwise select just this one.
+      if (!useBoardStore.getState().selectedIds.includes(id)) setSelection([id])
+    },
     [setSelection, toggleSelection],
   )
   const handleChange = useCallback(
@@ -682,13 +720,7 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
 
   if (el.type === 'pen' || el.type === 'line' || el.type === 'arrow' || el.type === 'measure') {
     const poly = el as PolyElement
-    const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-      const dx = e.target.x()
-      const dy = e.target.y()
-      e.target.position({ x: 0, y: 0 })
-      const shifted = poly.points.map((p, i) => (i % 2 === 0 ? p + dx : p + dy))
-      change({ points: shifted } as Partial<BoardElement>)
-    }
+    const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => commitPointsDrag(e.target, poly, poly.points, change)
     // arrow, measure and pen routes all carry a direction arrowhead; only `line` is plain.
     if (poly.type === 'arrow' || poly.type === 'measure' || poly.type === 'pen') {
       return (
@@ -742,7 +774,7 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
         stroke={el.color}
         strokeWidth={3}
         fill={el.color + '22'}
-        onDragEnd={(e) => change({ x: e.target.x(), y: e.target.y() } as Partial<BoardElement>)}
+        onDragEnd={(e) => commitXYDrag(e.target, el, change)}
         onTransformEnd={(e) => {
           const node = e.target
           const sx = node.scaleX()
@@ -766,7 +798,7 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
         stroke={el.color}
         strokeWidth={3}
         fill={el.color + '22'}
-        onDragEnd={(e) => change({ x: e.target.x(), y: e.target.y() } as Partial<BoardElement>)}
+        onDragEnd={(e) => commitXYDrag(e.target, el, change)}
         onTransformEnd={(e) => {
           const node = e.target
           const s = node.scaleX()
@@ -779,13 +811,7 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
   }
 
   if (el.type === 'zone') {
-    const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-      const dx = e.target.x()
-      const dy = e.target.y()
-      e.target.position({ x: 0, y: 0 })
-      const shifted = el.points.map((p, i) => (i % 2 === 0 ? p + dx : p + dy))
-      change({ points: shifted } as Partial<BoardElement>)
-    }
+    const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => commitPointsDrag(e.target, el, el.points, change)
     return (
       <Line
         {...common}
@@ -817,7 +843,7 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
           const t = window.prompt('Text:', el.text)
           if (t != null) change({ text: t } as Partial<BoardElement>)
         }}
-        onDragEnd={(e) => change({ x: e.target.x(), y: e.target.y() } as Partial<BoardElement>)}
+        onDragEnd={(e) => commitXYDrag(e.target, el, change)}
         onTransformEnd={(e) => {
           const node = e.target
           const s = node.scaleX()
@@ -855,8 +881,7 @@ function IconView({
   const url = asset?.icon ? `/icons/blue/${asset.icon}.svg` : null
   const img = useTintedIcon(url, el.color)
 
-  const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) =>
-    change({ x: e.target.x(), y: e.target.y() } as Partial<BoardElement>)
+  const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => commitXYDrag(e.target, el, change)
   const onTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
     const node = e.target
     const s = node.scaleX()
