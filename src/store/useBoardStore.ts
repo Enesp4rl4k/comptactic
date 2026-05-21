@@ -425,13 +425,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!els.length) return
     get().beginHistory()
     const { elements } = get()
+    // Recenter the group on the map center so it's always visible after placing.
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    const acc = (x: number, y: number) => {
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+    }
+    for (const el of els) {
+      if ('points' in el) for (let i = 0; i < el.points.length; i += 2) acc(el.points[i], el.points[i + 1])
+      else if ('x' in el) acc((el as { x: number }).x, (el as { y: number }).y)
+    }
+    const CENTER = 512 // MAP_SIZE / 2
+    const dx = Number.isFinite(minX) ? CENTER - (minX + maxX) / 2 : 0
+    const dy = Number.isFinite(minY) ? CENTER - (minY + maxY) / 2 : 0
     let z = Math.max(0, ...Object.values(elements).map((e) => e.z))
     const next = { ...elements }
     const newIds: string[] = []
     for (const el of els) {
       const id = nanoid(8)
       z += 1
-      next[id] = { ...shiftEl(el, 24, 24), id, z } as BoardElement
+      next[id] = { ...shiftEl(el, dx, dy), id, z } as BoardElement
       newIds.push(id)
     }
     set({ elements: next, selectedIds: newIds })

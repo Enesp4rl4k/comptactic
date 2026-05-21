@@ -68,6 +68,12 @@ export function saveRoster(
   return next
 }
 
+export function renameTemplate(id: string, name: string): Template[] {
+  const next = loadTemplates().map((t) => (t.id === id ? { ...t, name } : t))
+  save(next)
+  return next
+}
+
 export function deleteTemplate(id: string): Template[] {
   const next = loadTemplates().filter((t) => t.id !== id)
   save(next)
