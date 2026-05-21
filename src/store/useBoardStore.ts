@@ -204,6 +204,8 @@ interface BoardState {
   setMemberSlot: (squadId: string, index: number, patch: Partial<{ name: string; role: string }>) => void
   removeMemberSlot: (squadId: string, index: number) => void
   moveMember: (fromSquadId: string, memberId: string, toSquadId: string) => void
+  /** Reorder a member within its squad, dropping it at another member's position. */
+  reorderMember: (squadId: string, fromMemberId: string, toMemberId: string) => void
   memberToPool: (squadId: string, memberId: string) => void
   reorderSquads: (fromId: string, toId: string) => void
   reorderVehicles: (fromId: string, toId: string) => void
@@ -644,6 +646,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   reorderSquads: (fromId, toId) => set((s) => ({ squads: reorderById(s.squads, fromId, toId) })),
   reorderVehicles: (fromId, toId) => set((s) => ({ vehicles: reorderById(s.vehicles, fromId, toId) })),
+  reorderMember: (squadId, fromMemberId, toMemberId) =>
+    set((s) => ({
+      squads: s.squads.map((sq) =>
+        sq.id === squadId ? { ...sq, members: reorderById(sq.members, fromMemberId, toMemberId) } : sq,
+      ),
+    })),
 
   assignPlayerToSquad: (name, squadId) =>
     set((s) => {

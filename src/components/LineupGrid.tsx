@@ -17,7 +17,7 @@ function memberInitials(name: string): string {
 // Excel-style line-up: squads = columns, players = rows.
 // Rows grow dynamically: a new empty row opens as players are added (max 9).
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad, moveMember, reorderSquads } =
+  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad, moveMember, reorderSquads, reorderMember } =
     useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
@@ -88,6 +88,7 @@ export default function LineupGrid() {
                 onAssign={(name) => assignPlayerToSquad(name, sq.id)}
                 onMoveHere={(fromSquadId, memberId) => moveMember(fromSquadId, memberId, sq.id)}
                 onReorder={(fromSquadId) => reorderSquads(fromSquadId, sq.id)}
+                onReorderMember={(fromMemberId, toMemberId) => reorderMember(sq.id, fromMemberId, toMemberId)}
               />
             ))}
 
@@ -117,6 +118,7 @@ function SquadColumn({
   onAssign,
   onMoveHere,
   onReorder,
+  onReorderMember,
 }: {
   squad: RosterSquad
   rows: number
@@ -128,6 +130,7 @@ function SquadColumn({
   onAssign: (name: string) => void
   onMoveHere: (fromSquadId: string, memberId: string) => void
   onReorder: (fromSquadId: string) => void
+  onReorderMember: (fromMemberId: string, toMemberId: string) => void
 }) {
   const accent = squad.color
   const count = squad.members.length
@@ -237,7 +240,36 @@ function SquadColumn({
         const isAddRow = i === count && count < MAX_SLOTS
         const isLeader = i === 0
         return (
-          <div key={i} className={`flex items-center gap-1 h-9 px-1.5 border-b border-edge/40 ${isAddRow ? 'opacity-70' : ''}`}>
+          <div
+            key={i}
+            className={`flex items-center gap-1 h-9 px-1.5 border-b border-edge/40 ${isAddRow ? 'opacity-70' : ''}`}
+            onDragOver={
+              m
+                ? (e) => {
+                    if (Array.from(e.dataTransfer.types).map((x) => x.toLowerCase()).includes('membermove')) e.preventDefault()
+                  }
+                : undefined
+            }
+            onDrop={
+              m
+                ? (e) => {
+                    const move = e.dataTransfer.getData('memberMove')
+                    if (!move) return
+                    try {
+                      const { squadId, memberId } = JSON.parse(move)
+                      // same-squad drop = reorder to this row; let cross-squad bubble to the column
+                      if (squadId === squad.id) {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        if (memberId !== m.id) onReorderMember(memberId, m.id)
+                      }
+                    } catch {
+                      /* ignore */
+                    }
+                  }
+                : undefined
+            }
+          >
             {!isAddRow && m ? (
               <div
                 draggable
