@@ -915,7 +915,7 @@ function IconView({
     const S = 44
     return (
       <Group {...groupProps}>
-        {showRings && <RadioRings metersToStage={metersToStage} scale={el.scale} />}
+        {showRings && <RadioRings metersToStage={metersToStage} scale={el.scale} color={el.color} />}
         <KonvaImage image={img} width={S} height={S} offsetX={S / 2} offsetY={S / 2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />
       </Group>
     )
@@ -927,7 +927,7 @@ function IconView({
   const shape = asset?.shape ?? 'circle'
   return (
     <Group {...groupProps}>
-      {showRings && <RadioRings metersToStage={metersToStage} scale={el.scale} />}
+      {showRings && <RadioRings metersToStage={metersToStage} scale={el.scale} color={el.color} />}
       {shape === 'circle' && <Circle radius={R} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       {shape === 'square' && <Rect width={R * 2} height={R * 2} offsetX={R} offsetY={R} cornerRadius={4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       {shape === 'diamond' && <RegularPolygon sides={4} radius={R + 4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
@@ -936,19 +936,19 @@ function IconView({
   )
 }
 
-// FOB radio coverage rings (150 m green, 300 m amber). Sizes divide by the icon
-// scale so the rings stay at true map-metre radius regardless of icon size.
-function RadioRings({ metersToStage, scale }: { metersToStage: number; scale: number }) {
+// FOB radio coverage rings (150 m + 300 m), drawn in the radio's own color.
+// Sizes divide by the icon scale so the rings stay at true map-metre radius.
+function RadioRings({ metersToStage, scale, color }: { metersToStage: number; scale: number; color: string }) {
   const r150 = (150 * metersToStage) / scale
   const r300 = (300 * metersToStage) / scale
   const sw = 1.5 / scale
   const dash = [6 / scale, 5 / scale]
   return (
     <>
-      <Circle radius={r300} stroke="#eab308" strokeWidth={sw} dash={dash} fill="rgba(234,179,8,0.04)" listening={false} />
-      <Circle radius={r150} stroke="#22c55e" strokeWidth={sw} dash={dash} fill="rgba(34,197,94,0.06)" listening={false} />
-      <Text text="150m" x={4 / scale} y={-r150 - 14 / scale} fontSize={11 / scale} fontStyle="bold" fill="#22c55e" listening={false} />
-      <Text text="300m" x={4 / scale} y={-r300 - 14 / scale} fontSize={11 / scale} fontStyle="bold" fill="#eab308" listening={false} />
+      <Circle radius={r300} stroke={color} strokeWidth={sw} dash={dash} fill={color + '0d'} listening={false} />
+      <Circle radius={r150} stroke={color} strokeWidth={sw * 1.4} fill={color + '14'} listening={false} />
+      <Text text="150m" x={4 / scale} y={-r150 - 14 / scale} fontSize={11 / scale} fontStyle="bold" fill={color} listening={false} />
+      <Text text="300m" x={4 / scale} y={-r300 - 14 / scale} fontSize={11 / scale} fontStyle="bold" fill={color} listening={false} />
     </>
   )
 }

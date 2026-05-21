@@ -79,7 +79,7 @@ export default function PlayerPool() {
           </div>
 
           {pool.length > 0 && (
-            <div className="flex flex-wrap gap-2.5 pt-1">
+            <div className="flex flex-col gap-1 max-h-56 overflow-y-auto pr-1">
               {pool.map((name, i) => (
                 <div
                   key={`${name}-${i}`}
@@ -89,19 +89,20 @@ export default function PlayerPool() {
                     e.dataTransfer.effectAllowed = 'move'
                   }}
                   title={`${name} — drag onto a squad`}
-                  className="group relative flex w-16 flex-col items-center gap-1 cursor-grab active:cursor-grabbing"
+                  className="group flex items-center gap-2 rounded-md bg-panel2 border border-edge px-2 py-1 cursor-grab active:cursor-grabbing hover:border-accent"
                 >
                   <div
-                    className="h-11 w-11 rounded-full grid place-items-center text-sm font-bold text-white shadow ring-1 ring-black/40"
+                    className="h-7 w-7 shrink-0 rounded-full grid place-items-center text-[11px] font-bold text-white ring-1 ring-black/40"
                     style={{ background: colorFor(name) }}
                   >
                     {initials(name)}
                   </div>
-                  <span className="w-full truncate text-center text-[10px] leading-tight text-gray-300">{name}</span>
+                  <span className="flex-1 min-w-0 truncate text-[12px] text-gray-200">{name}</span>
+                  <span className="shrink-0 text-gray-600 text-xs select-none">⠿</span>
                   <button
                     onClick={() => removeFromPool(name)}
                     title="Remove"
-                    className="absolute -top-1.5 -right-0.5 hidden h-4 w-4 place-items-center rounded-full bg-panel2 border border-edge text-gray-400 hover:text-red-400 text-[10px] group-hover:grid cursor-pointer"
+                    className="shrink-0 text-gray-500 hover:text-red-400 text-sm leading-none cursor-pointer"
                   >
                     ×
                   </button>
