@@ -15,7 +15,7 @@ import PlansModal from './components/PlansModal'
 import BriefingMode from './components/BriefingMode'
 import TemplatesModal from './components/TemplatesModal'
 import { exportSlidesPDF, exportSlidesPNG } from './lib/exportSlides'
-import { createShare, getShare } from './lib/plans'
+import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { startCollab, getRoomId } from './lib/collab'
@@ -157,6 +157,36 @@ export default function App() {
     await copyLink(encodeToHash(store.toSnapshot()), 'Share link copied to clipboard')
   }
 
+  // Save the current plan to the cloud (create or update). Falls back to a JSON
+  // download when Supabase isn't configured.
+  const onSave = async () => {
+    if (!isSupabaseConfigured) {
+      downloadJSON(store.toSnapshot())
+      return
+    }
+    if (!user) {
+      setAuthOpen(true)
+      flash('Sign in to save your plan')
+      return
+    }
+    try {
+      const snap = store.toSnapshot()
+      if (currentPlanId) {
+        await updatePlan(currentPlanId, { data: snap })
+        flash('Plan saved to cloud')
+      } else {
+        const title = window.prompt('Plan name:', currentTitle) ?? currentTitle
+        const id = await createPlan(title, snap)
+        setCurrentPlanId(id)
+        setCurrentTitle(title)
+        flash('Plan saved to cloud')
+      }
+    } catch {
+      flash('Could not save — downloading JSON instead')
+      downloadJSON(store.toSnapshot())
+    }
+  }
+
   const onImport = async () => {
     const snap = await importJSON()
     if (snap) {
@@ -189,8 +219,8 @@ export default function App() {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <button className="btn" onClick={() => downloadJSON(store.toSnapshot())}>Save</button>
-          <button className="btn" onClick={onImport}>Load</button>
+          <button className="btn btn-success" onClick={onSave} title={isSupabaseConfigured ? 'Save to cloud' : 'Download JSON'}>Save</button>
+          <button className="btn" onClick={onImport} title="Import a .json plan">Load</button>
           <button className="btn" onClick={() => setTemplatesOpen(true)} title="Templates &amp; library">Templates</button>
           {view === 'board' && (
             <button className="btn" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">▶ Briefing</button>
@@ -199,6 +229,7 @@ export default function App() {
             onPNG={() => exportPNG()}
             onPDF={async () => { flash('Exporting PDF…'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
             onAllPNG={async () => { flash('Exporting PNG…'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
+            onJSON={() => downloadJSON(store.toSnapshot())}
           />
           <button className="btn btn-success" onClick={onShare}>Share</button>
           {isSupabaseConfigured && (
@@ -311,7 +342,7 @@ function OnlineBar() {
   )
 }
 
-function ExportMenu({ onPNG, onPDF, onAllPNG }: { onPNG: () => void; onPDF: () => void; onAllPNG: () => void }) {
+function ExportMenu({ onPNG, onPDF, onAllPNG, onJSON }: { onPNG: () => void; onPDF: () => void; onAllPNG: () => void; onJSON: () => void }) {
   const [open, setOpen] = useState(false)
   const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer'
   const run = (fn: () => void) => { setOpen(false); fn() }
@@ -325,6 +356,8 @@ function ExportMenu({ onPNG, onPDF, onAllPNG }: { onPNG: () => void; onPDF: () =
             <button className={item} onClick={() => run(onPNG)}>PNG · current slide</button>
             <button className={item} onClick={() => run(onPDF)}>PDF · all slides</button>
             <button className={item} onClick={() => run(onAllPNG)}>PNG · all slides</button>
+            <div className="h-px bg-edge" />
+            <button className={item} onClick={() => run(onJSON)}>JSON file · download</button>
           </div>
         </>
       )}
