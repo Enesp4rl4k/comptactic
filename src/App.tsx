@@ -75,11 +75,15 @@ export default function App() {
     let lastSent = ''
     let timer: ReturnType<typeof setTimeout> | undefined
     const room = getRoomId()
-    const handle = startCollab(room, (snap) => {
-      applyingRemote = true
-      useBoardStore.getState().applyRemote(snap)
-      applyingRemote = false
-    })
+    const handle = startCollab(
+      room,
+      (snap) => {
+        applyingRemote = true
+        useBoardStore.getState().applyRemote(snap)
+        applyingRemote = false
+      },
+      () => useBoardStore.getState().toSnapshot(),
+    )
     const unsub = useBoardStore.subscribe(() => {
       if (applyingRemote) return
       clearTimeout(timer)
@@ -138,6 +142,13 @@ export default function App() {
       history.replaceState(null, '', url)
       flash('Link written to the address bar')
     }
+  }
+
+  // Copy a LIVE collaboration link (same ?room=) so others edit together in real time.
+  const onInvite = async () => {
+    const room = getRoomId()
+    const url = `${window.location.origin}${window.location.pathname}?room=${room}`
+    await copyLink(url, 'Live collaboration link copied — others editing here see your changes')
   }
 
   const onShare = async () => {
@@ -217,6 +228,7 @@ export default function App() {
             onPDF={async () => { flash('Exporting PDF…'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
             onAllPNG={async () => { flash('Exporting PNG…'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
           />
+          <button className="btn" onClick={onInvite} title="Copy a live co-op link (real-time editing)">🟢 Co-op</button>
           <button className="btn btn-success" onClick={onShare}>Share</button>
           {isSupabaseConfigured && (
             <button className="btn" onClick={() => setPlansOpen(true)}>☁ Plans</button>
