@@ -13,6 +13,7 @@ import AuthModal from './components/AuthModal'
 import PlansModal from './components/PlansModal'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
+import { startCollab, getRoomId } from './lib/collab'
 import type { BoardSnapshot } from './types'
 import { useBoardStore } from './store/useBoardStore'
 import { MAP_BY_ID } from './data/maps'
@@ -48,6 +49,44 @@ export default function App() {
     }
     const auto = loadLocal()
     if (auto) store.loadSnapshot(auto)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // realtime collaboration: broadcast local board changes, apply peers' changes
+  useEffect(() => {
+    let applyingRemote = false
+    let lastSent = ''
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const room = getRoomId()
+    const handle = startCollab(room, (snap) => {
+      applyingRemote = true
+      useBoardStore.getState().applyRemote(snap)
+      applyingRemote = false
+    })
+    const unsub = useBoardStore.subscribe(() => {
+      if (applyingRemote) return
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const snap = useBoardStore.getState().toSnapshot()
+        const key = JSON.stringify({
+          m: snap.mapId,
+          l: snap.layerId,
+          b: snap.boards,
+          ak: snap.activeKey,
+          s: snap.squads,
+          v: snap.vehicles,
+          p: snap.playerPool,
+        })
+        if (key === lastSent) return // skip selection/tool-only changes
+        lastSent = key
+        handle.broadcast(snap)
+      }, 150)
+    })
+    return () => {
+      clearTimeout(timer)
+      unsub()
+      handle.stop()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

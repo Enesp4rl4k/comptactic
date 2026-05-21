@@ -194,6 +194,7 @@ interface BoardState {
   toggleVehicleSquad: (id: string, squadId: string) => void
 
   loadSnapshot: (snap: BoardSnapshot) => void
+  applyRemote: (snap: BoardSnapshot) => void
   toSnapshot: () => BoardSnapshot
 }
 
@@ -603,6 +604,28 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           : v,
       ),
     })),
+
+  applyRemote: (snap) =>
+    set((s) => {
+      const slides = snap.slides && snap.slides.length ? snap.slides : s.slides
+      const activeSlideId =
+        snap.activeSlideId && slides.some((x) => x.id === snap.activeSlideId) ? snap.activeSlideId : slides[0]?.id ?? s.activeSlideId
+      const active = slides.find((x) => x.id === activeSlideId)
+      return {
+        // adopt shared board state...
+        mapId: snap.mapId,
+        layerId: snap.layerId,
+        boards: snap.boards ?? s.boards,
+        activeKey: snap.activeKey ?? s.activeKey,
+        slides,
+        activeSlideId,
+        elements: active ? active.elements : s.elements,
+        squads: snap.squads,
+        vehicles: snap.vehicles ?? [],
+        playerPool: snap.playerPool ?? [],
+        // ...but keep local selection/tooling/view/custom image
+      }
+    }),
 
   loadSnapshot: (snap) =>
     set(() => {
