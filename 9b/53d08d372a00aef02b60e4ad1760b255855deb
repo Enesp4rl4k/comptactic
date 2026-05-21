@@ -1,0 +1,32 @@
+src/components/VehiclePanel.tsx
+  s_f9303379803485::t_98237e32006af5 90,97-101
+  s_f9303379803485::t_ffbed4ff4b614f 131
+  s_f9303379803485::t_f590e172a41860 143-155
+src/store/useBoardStore.ts
+  s_f9303379803485::t_37d757978a97df 194-195
+  s_f9303379803485::t_3875257a8647b1 577-579
+  s_f9303379803485::t_cadeb70f1a04d5 62-73
+src/components/LineupGrid.tsx
+  s_f9303379803485::t_a2d5aca59c7577 90
+  s_f9303379803485::t_31c23d59a00370 119,130
+  s_f9303379803485::t_e7f88e729c4cc1 20
+  s_f9303379803485::t_0b2756df409df8 149,152-159
+  s_f9303379803485::t_7833c8de27ac47 167-172
+  s_f9303379803485::t_36f34f8fec2ddd 195,197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "9b53d08d372a00aef02b60e4ad1760b255855deb",
+  "prompts": {},
+  "sessions": {
+    "s_f9303379803485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97b315-d7ef-409f-a519-8cf75a56c9ee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
