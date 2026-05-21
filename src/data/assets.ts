@@ -37,7 +37,7 @@ export const ASSETS: AssetDef[] = [
   { id: 'transport', name: 'Transport Truck', category: 'vehicle', glyph: '🚛', icon: 'vehicles/map_truck_transport', shape: 'diamond', teamColored: true },
   { id: 'mrap', name: 'MRAP / Jeep', category: 'vehicle', glyph: '🚙', icon: 'vehicles/map_jeep', shape: 'diamond', teamColored: true },
   { id: 'apc', name: 'APC', category: 'vehicle', glyph: '🛻', icon: 'vehicles/map_apc', shape: 'diamond', teamColored: true },
-  { id: 'ifv', name: 'IFV', category: 'vehicle', glyph: '🚜', icon: 'vehicles/map_ifv', shape: 'diamond', teamColored: true },
+  { id: 'ifv', name: 'IFV', category: 'vehicle', glyph: '🚜', icon: 'vehicles/map_trackedifv', shape: 'diamond', teamColored: true },
   { id: 'mbt', name: 'Main Battle Tank', category: 'vehicle', glyph: '🛡️', icon: 'vehicles/map_tank', shape: 'diamond', teamColored: true },
   { id: 'heli_trans', name: 'Transport Heli', category: 'vehicle', glyph: '🚁', icon: 'vehicles/map_transporthelo', shape: 'diamond', teamColored: true },
   { id: 'heli_atk', name: 'Attack Heli', category: 'vehicle', glyph: '🚁', icon: 'vehicles/map_attackhelo', shape: 'diamond', teamColored: true },

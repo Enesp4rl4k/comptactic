@@ -40,6 +40,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const stageRef = useRef<Konva.Stage>(null)
   const trRef = useRef<Konva.Transformer>(null)
   const lastPenRef = useRef<{ x: number; y: number } | null>(null)
+  // id of the most recent freehand stroke, to allow continuing it
+  const lastPenIdRef = useRef<string | null>(null)
 
   const [size, setSize] = useState({ w: 800, h: 600 })
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 })
@@ -62,6 +64,10 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const setTool = useBoardStore((s) => s.setTool)
   const undo = useBoardStore((s) => s.undo)
   const redo = useBoardStore((s) => s.redo)
+  const copySelection = useBoardStore((s) => s.copySelection)
+  const paste = useBoardStore((s) => s.paste)
+  const duplicateSelection = useBoardStore((s) => s.duplicateSelection)
+  const toggleSelection = useBoardStore((s) => s.toggleSelection)
 
   const customImage = useBoardStore((s) => s.customImage)
   const setCustomImage = useBoardStore((s) => s.setCustomImage)
@@ -71,7 +77,10 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const hasBg = Boolean(customImage || layer)
 
   // stable callbacks for memoized elements
-  const handleSelect = useCallback((id: string) => setSelection([id]), [setSelection])
+  const handleSelect = useCallback(
+    (id: string, additive = false) => (additive ? toggleSelection(id) : setSelection([id])),
+    [setSelection, toggleSelection],
+  )
   const handleChange = useCallback(
     (id: string, patch: Partial<BoardElement>, commit?: boolean) => updateElement(id, patch, commit),
     [updateElement],
@@ -109,6 +118,19 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault()
         redo()
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        if (selectedIds.length) {
+          e.preventDefault()
+          copySelection()
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault()
+        paste()
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        if (selectedIds.length) {
+          e.preventDefault()
+          duplicateSelection()
+        }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedIds.length) {
           e.preventDefault()
@@ -123,7 +145,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedIds, undo, redo, removeElements, setSelection, setTool])
+  }, [selectedIds, undo, redo, removeElements, setSelection, setTool, copySelection, paste, duplicateSelection])
 
   // Paste an image (Ctrl+V) to use it as a custom board background.
   useEffect(() => {
@@ -163,9 +185,9 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     const tr = trRef.current
     const stage = stageRef.current
     if (!tr || !stage) return
-    if (selectedIds.length === 1) {
-      const node = stage.findOne('#' + selectedIds[0])
-      tr.nodes(node ? [node] : [])
+    if (selectedIds.length) {
+      const nodes = selectedIds.map((id) => stage.findOne('#' + id)).filter(Boolean) as Konva.Node[]
+      tr.nodes(nodes)
     } else {
       tr.nodes([])
     }
@@ -305,7 +327,18 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     } else if (d.type === 'pen') {
       if (d.points.length < 4) return
       const pts = simplifyPoints(d.points, 2)
-      addElement({ type: 'pen', points: pts, strokeWidth, team, color: drawColor, rotation: 0, rosterSquadId: squadId } as Omit<BoardElement, 'id' | 'z'>)
+      // Continue the previous freehand if this stroke starts near its end point.
+      const prev = lastPenIdRef.current ? (useBoardStore.getState().elements[lastPenIdRef.current] as PolyElement | undefined) : undefined
+      if (prev && prev.type === 'pen') {
+        const ex = prev.points[prev.points.length - 2]
+        const ey = prev.points[prev.points.length - 1]
+        if (Math.hypot(pts[0] - ex, pts[1] - ey) < 28) {
+          updateElement(lastPenIdRef.current!, { points: [...prev.points, ...pts.slice(2)] } as Partial<BoardElement>, true)
+          setSelection([lastPenIdRef.current!])
+          return
+        }
+      }
+      lastPenIdRef.current = addElement({ type: 'pen', points: pts, strokeWidth, team, color: drawColor, rotation: 0, rosterSquadId: squadId } as Omit<BoardElement, 'id' | 'z'>)
     } else {
       const moved = Math.hypot(d.points[2] - d.points[0], d.points[3] - d.points[1])
       if (moved < 4) return
@@ -630,7 +663,7 @@ function ZoneDraft({ poly, color }: { poly: { pts: number[]; cx: number; cy: num
 interface ElementViewProps {
   el: BoardElement
   selectable: boolean
-  onSelect: (id: string) => void
+  onSelect: (id: string, additive?: boolean) => void
   onChange: (id: string, patch: Partial<BoardElement>, commit?: boolean) => void
 }
 
@@ -641,7 +674,7 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
     onMouseDown: (e) => {
       if (selectable) {
         e.cancelBubble = true
-        onSelect(el.id)
+        onSelect(el.id, e.evt.shiftKey)
       }
     },
   }

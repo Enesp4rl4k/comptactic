@@ -59,6 +59,15 @@ function freshSlides(): Slide[] {
   return [{ id: nanoid(6), name: '1', elements: {} }]
 }
 
+/** Returns a copy of an element shifted by (dx, dy), handling point- and xy-based shapes. */
+function shiftEl(el: BoardElement, dx: number, dy: number): BoardElement {
+  const e = { ...el } as BoardElement & { x?: number; y?: number; points?: number[] }
+  if (Array.isArray(e.points)) e.points = e.points.map((p, i) => (i % 2 === 0 ? p + dx : p + dy))
+  if (typeof e.x === 'number') e.x += dx
+  if (typeof e.y === 'number') e.y += dy
+  return e as BoardElement
+}
+
 /** Stash the current active board, then load (or create) the board for `newKey`. */
 function switchBoard(
   s: Pick<BoardState, 'slides' | 'activeSlideId' | 'elements' | 'activeKey' | 'boards'>,
@@ -107,6 +116,8 @@ interface BoardState {
   // elements (id-keyed -> collaboration ready)
   elements: Record<string, BoardElement>
   selectedIds: string[]
+  /** Internal clipboard for copy/paste of elements. */
+  clipboard: BoardElement[]
   // history
   past: Record<string, BoardElement>[]
   future: Record<string, BoardElement>[]
@@ -141,6 +152,10 @@ interface BoardState {
   updateElement: (id: string, patch: Partial<BoardElement>, commit?: boolean) => void
   removeElements: (ids: string[]) => void
   setSelection: (ids: string[]) => void
+  toggleSelection: (id: string) => void
+  copySelection: () => void
+  paste: () => void
+  duplicateSelection: () => void
   clearBoard: () => void
 
   beginHistory: () => void
@@ -197,6 +212,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   activeKey: NONE_KEY,
   elements: {},
   selectedIds: [],
+  clipboard: [],
   past: [],
   future: [],
   squads: [],
@@ -316,6 +332,48 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   setSelection: (ids) => set({ selectedIds: ids }),
+
+  toggleSelection: (id) =>
+    set((s) => ({
+      selectedIds: s.selectedIds.includes(id) ? s.selectedIds.filter((x) => x !== id) : [...s.selectedIds, id],
+    })),
+
+  copySelection: () =>
+    set((s) => ({ clipboard: s.selectedIds.map((id) => s.elements[id]).filter(Boolean) as BoardElement[] })),
+
+  paste: () => {
+    const { clipboard, elements } = get()
+    if (!clipboard.length) return
+    get().beginHistory()
+    let z = Math.max(0, ...Object.values(elements).map((e) => e.z))
+    const next = { ...elements }
+    const newIds: string[] = []
+    for (const el of clipboard) {
+      const id = nanoid(8)
+      z += 1
+      next[id] = { ...shiftEl(el, 20, 20), id, z } as BoardElement
+      newIds.push(id)
+    }
+    set({ elements: next, selectedIds: newIds })
+  },
+
+  duplicateSelection: () => {
+    const { elements, selectedIds } = get()
+    if (!selectedIds.length) return
+    get().beginHistory()
+    let z = Math.max(0, ...Object.values(elements).map((e) => e.z))
+    const next = { ...elements }
+    const newIds: string[] = []
+    for (const id of selectedIds) {
+      const el = elements[id]
+      if (!el) continue
+      const nid = nanoid(8)
+      z += 1
+      next[nid] = { ...shiftEl(el, 16, 16), id: nid, z } as BoardElement
+      newIds.push(nid)
+    }
+    set({ elements: next, selectedIds: newIds })
+  },
 
   clearBoard: () => {
     get().beginHistory()
