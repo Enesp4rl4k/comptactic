@@ -17,9 +17,7 @@ export default function AssetPalette() {
 
   return (
     <div className="w-56 shrink-0 bg-panel border-l border-edge overflow-y-auto flex flex-col">
-      <div className="px-3 py-2 text-xs uppercase tracking-wide text-gray-500 border-b border-edge">
-        Comp Components
-      </div>
+      <div className="panel-header">Components</div>
 
       {/* squad-specific placement selector */}
       <div className="px-2 py-2 border-b border-edge">
@@ -56,7 +54,7 @@ export default function AssetPalette() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search components…"
-          className="w-full bg-panel2 text-xs rounded border border-edge px-2 py-1.5 outline-none focus:border-blue-500"
+          className="input text-xs"
         />
       </div>
 

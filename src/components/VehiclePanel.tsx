@@ -17,14 +17,14 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
 
   return (
     <div className="border-t border-edge bg-panel">
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-edge/60">
-        <span className="text-xs uppercase tracking-wide text-gray-500">🚜 Vehicle Assignments</span>
-        <span className="text-[11px] text-gray-600">· {vehicles.length}</span>
+      <div className="panel-header">
+        <span>Vehicle Assignments</span>
+        <span className="text-gray-600 font-normal">· {vehicles.length}</span>
         {!readOnly && (
           <div className="ml-auto relative">
             <button
               onClick={() => setAdding((v) => !v)}
-              className="px-2 h-7 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium"
+              className="btn btn-primary h-7 px-2 text-xs"
             >
               + Add Vehicle
             </button>

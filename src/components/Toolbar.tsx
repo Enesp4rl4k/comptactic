@@ -8,6 +8,7 @@ const TOOLS: { id: ToolId; label: string; glyph: string }[] = [
   { id: 'pen', label: 'Freehand', glyph: '✎' },
   { id: 'rect', label: 'Rectangle', glyph: '▭' },
   { id: 'circle', label: 'Circle', glyph: '◯' },
+  { id: 'zone', label: 'Zone (click corners, double-click / Enter to close)', glyph: '⬠' },
   { id: 'text', label: 'Text', glyph: 'T' },
   { id: 'measure', label: 'Measure (m)', glyph: '📏' },
 ]
@@ -25,17 +26,17 @@ export default function Toolbar() {
     useBoardStore()
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-panel border-b border-edge">
+    <div className="flex items-center gap-3 px-3 py-1.5 bg-panel border-b border-edge">
       <div className="flex gap-1">
         {TOOLS.map((t) => (
           <button
             key={t.id}
             title={t.label}
             onClick={() => setTool(t.id)}
-            className={`h-9 w-9 rounded text-base grid place-items-center border transition-colors ${
+            className={`h-9 w-9 rounded-md text-base grid place-items-center border transition-colors cursor-pointer ${
               tool === t.id
-                ? 'bg-blue-600 border-blue-400 text-white'
-                : 'bg-panel2 border-edge text-gray-300 hover:bg-edge'
+                ? 'bg-accent border-accent text-white'
+                : 'bg-panel2 border-edge text-gray-400 hover:bg-edge hover:text-white'
             }`}
           >
             {t.glyph}
@@ -50,12 +51,12 @@ export default function Toolbar() {
           <button
             key={t.id}
             onClick={() => setTeam(t.id)}
-            className={`px-2 h-9 rounded text-xs font-semibold border ${
-              team === t.id ? 'text-white' : 'text-gray-400'
+            className={`px-2.5 h-9 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
+              team === t.id ? 'text-white' : 'text-gray-400 hover:text-white'
             }`}
             style={{
-              background: team === t.id ? t.color : '#232833',
-              borderColor: team === t.id ? t.color : '#333a47',
+              background: team === t.id ? t.color : '#1e2430',
+              borderColor: team === t.id ? t.color : '#2b3340',
             }}
           >
             {t.label}
@@ -65,12 +66,14 @@ export default function Toolbar() {
 
       <Divider />
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {COLORS.map((c) => (
           <button
             key={c}
             onClick={() => setColor(c)}
-            className={`h-6 w-6 rounded-full border-2 ${color === c ? 'border-white' : 'border-transparent'}`}
+            className={`h-6 w-6 rounded-full border-2 transition-transform cursor-pointer hover:scale-110 ${
+              color === c ? 'border-white ring-2 ring-white/20' : 'border-black/40'
+            }`}
             style={{ background: c }}
             title={c}
           />
@@ -79,7 +82,7 @@ export default function Toolbar() {
 
       <Divider />
 
-      <label className="flex items-center gap-2 text-xs text-gray-400">
+      <label className="flex items-center gap-2 text-xs text-gray-400 select-none">
         Width
         <input
           type="range"
@@ -87,8 +90,9 @@ export default function Toolbar() {
           max={14}
           value={strokeWidth}
           onChange={(e) => setStrokeWidth(Number(e.target.value))}
-          className="w-24 accent-blue-500"
+          className="w-24 accent-accent cursor-pointer"
         />
+        <span className="w-4 text-gray-300 tabular-nums">{strokeWidth}</span>
       </label>
 
       <div className="ml-auto flex gap-1">
@@ -99,6 +103,7 @@ export default function Toolbar() {
             if (confirm('Clear the board?')) clearBoard()
           }}
           title="Clear board"
+          danger
         >
           🗑
         </ActionBtn>
@@ -108,15 +113,27 @@ export default function Toolbar() {
 }
 
 function Divider() {
-  return <div className="h-7 w-px bg-edge" />
+  return <div className="h-6 w-px bg-edge" />
 }
 
-function ActionBtn({ children, onClick, title }: { children: React.ReactNode; onClick: () => void; title: string }) {
+function ActionBtn({
+  children,
+  onClick,
+  title,
+  danger,
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  title: string
+  danger?: boolean
+}) {
   return (
     <button
       onClick={onClick}
       title={title}
-      className="h-9 w-9 rounded bg-panel2 border border-edge text-gray-300 hover:bg-edge grid place-items-center"
+      className={`h-9 w-9 rounded-md bg-panel2 border border-edge grid place-items-center transition-colors cursor-pointer ${
+        danger ? 'text-gray-400 hover:text-red-400 hover:border-red-500/60' : 'text-gray-300 hover:bg-edge hover:text-white'
+      }`}
     >
       {children}
     </button>

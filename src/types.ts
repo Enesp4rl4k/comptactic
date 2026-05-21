@@ -11,6 +11,7 @@ export type ToolId =
   | 'pen'
   | 'rect'
   | 'circle'
+  | 'zone'
   | 'text'
   | 'measure'
 
@@ -21,6 +22,7 @@ export type ElementType =
   | 'measure'
   | 'rect'
   | 'circle'
+  | 'zone'
   | 'text'
   | 'icon'
 
@@ -55,6 +57,15 @@ export interface CircleElement extends ElementBase {
   radius: number
 }
 
+/** Polygon area marked by clicking corners; absolute stage coords in `points`. */
+export interface ZoneElement extends ElementBase {
+  type: 'zone'
+  points: number[]
+  label?: string
+  /** Optional link to a roster squad (squad-colored zone). */
+  rosterSquadId?: string
+}
+
 export interface TextElement extends ElementBase {
   type: 'text'
   x: number
@@ -78,6 +89,7 @@ export type BoardElement =
   | PolyElement
   | RectElement
   | CircleElement
+  | ZoneElement
   | TextElement
   | IconElement
 
@@ -172,6 +184,9 @@ export interface BoardSnapshot {
   version: 1
   mapId: string | null
   layerId: string | null
+  /** Optional user-supplied background image (data URL) used instead of a map layer. */
+  customImage?: string | null
+  customImageName?: string | null
   slides: Slide[]
   activeSlideId: string
   /** @deprecated legacy single-board field — read only for backward compatibility. */

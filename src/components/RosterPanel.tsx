@@ -7,7 +7,7 @@ import type { RosterSquad, Team } from '../types'
 const MAX_MEMBERS = 9
 
 export default function RosterPanel() {
-  const { mapId, layerId, squads, addSquad, updateSquad, removeSquad, team } = useBoardStore()
+  const { mapId, layerId, customImage, customImageName, squads, addSquad, updateSquad, removeSquad, team } = useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
 
@@ -15,8 +15,10 @@ export default function RosterPanel() {
     <div className="w-64 shrink-0 bg-panel border-r border-edge flex flex-col">
       {/* layer info */}
       <div className="px-3 py-3 border-b border-edge">
-        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Active Layer</div>
-        {layer ? (
+        <div className="panel-header !border-0 !px-0 !py-0 mb-1.5">Active Layer</div>
+        {customImage ? (
+          <div className="font-medium text-sm truncate">🖼 {customImageName || 'Custom image'}</div>
+        ) : layer ? (
           <>
             <div className="font-medium text-sm">{layer.name}</div>
             <div className="text-xs text-gray-400 mt-1">
@@ -33,12 +35,9 @@ export default function RosterPanel() {
       </div>
 
       {/* roster */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-edge">
-        <span className="text-xs uppercase tracking-wide text-gray-500">Roster / Line-up</span>
-        <button
-          onClick={addSquad}
-          className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white"
-        >
+      <div className="panel-header justify-between">
+        <span>Roster / Line-up</span>
+        <button onClick={addSquad} className="btn btn-primary h-6 px-2 text-xs normal-case tracking-normal">
           + Squad
         </button>
       </div>
@@ -70,6 +69,7 @@ function SquadCard({
   onUpdate: (patch: Partial<RosterSquad>) => void
   onRemove: () => void
 }) {
+  const setSquadColor = useBoardStore((s) => s.setSquadColor)
   const accent = squad.color
 
   const addMember = () => {
@@ -84,6 +84,13 @@ function SquadCard({
   return (
     <div className="rounded border border-edge bg-panel2" style={{ borderLeft: `3px solid ${accent}` }}>
       <div className="flex items-center gap-1 px-2 py-1.5">
+        <input
+          type="color"
+          value={squad.color}
+          onChange={(e) => setSquadColor(squad.id, e.target.value)}
+          title="Squad color"
+          className="h-5 w-5 shrink-0 rounded cursor-pointer bg-transparent border border-edge p-0"
+        />
         <input
           value={squad.name}
           onChange={(e) => onUpdate({ name: e.target.value })}

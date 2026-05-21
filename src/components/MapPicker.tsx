@@ -3,9 +3,20 @@ import { MAPS } from '../data/maps'
 import { useBoardStore } from '../store/useBoardStore'
 
 export default function MapPicker({ onClose }: { onClose: () => void }) {
-  const { setMap, mapId } = useBoardStore()
+  const { setMap, mapId, setCustomImage } = useBoardStore()
   const [activeMap, setActiveMap] = useState(mapId ?? MAPS[0].id)
   const map = MAPS.find((m) => m.id === activeMap) ?? MAPS[0]
+
+  const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCustomImage(reader.result as string, file.name)
+      onClose()
+    }
+    reader.readAsDataURL(file)
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center" onClick={onClose}>
@@ -13,9 +24,13 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
         className="w-[760px] max-w-[94vw] max-h-[86vh] bg-panel border border-edge rounded-lg overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
-          <h2 className="font-semibold">Select Map &amp; Layer</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-edge">
+          <h2 className="font-display font-semibold tracking-wide">Select Map &amp; Layer</h2>
+          <label className="btn h-7 px-2.5 text-xs cursor-pointer ml-auto">
+            ⬆ Upload image
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onUpload} className="hidden" />
+          </label>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none cursor-pointer">
             ×
           </button>
         </div>
@@ -50,7 +65,7 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
                     setMap(map.id, l.id)
                     onClose()
                   }}
-                  className="text-left p-3 rounded bg-panel2 border border-edge hover:border-blue-500"
+                  className="text-left p-3 rounded-md bg-panel2 border border-edge hover:border-accent transition-colors cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{l.name}</span>

@@ -44,6 +44,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const [size, setSize] = useState({ w: 800, h: 600 })
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 })
   const [draft, setDraft] = useState<Draft | null>(null)
+  // in-progress zone polygon: committed vertices + live cursor position
+  const [poly, setPoly] = useState<{ pts: number[]; cx: number; cy: number } | null>(null)
 
   const mapId = useBoardStore((s) => s.mapId)
   const layerId = useBoardStore((s) => s.layerId)
@@ -61,9 +63,12 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const undo = useBoardStore((s) => s.undo)
   const redo = useBoardStore((s) => s.redo)
 
+  const customImage = useBoardStore((s) => s.customImage)
+  const setCustomImage = useBoardStore((s) => s.setCustomImage)
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
-  const [bg, bgStatus] = useImage(layer?.image ?? null)
+  const [bg, bgStatus] = useImage(customImage ?? layer?.image ?? null)
+  const hasBg = Boolean(customImage || layer)
 
   // stable callbacks for memoized elements
   const handleSelect = useCallback((id: string) => setSelection([id]), [setSelection])
@@ -112,12 +117,46 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       } else if (e.key === 'Escape') {
         setSelection([])
         setDraft(null)
+        setPoly(null)
         setTool('select')
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [selectedIds, undo, redo, removeElements, setSelection, setTool])
+
+  // Paste an image (Ctrl+V) to use it as a custom board background.
+  useEffect(() => {
+    if (readOnly) return
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.type.startsWith('image/'))
+      if (!item) return
+      const file = item.getAsFile()
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => setCustomImage(reader.result as string, 'Pasted image')
+      reader.readAsDataURL(file)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [readOnly, setCustomImage])
+
+  // Zone tool: Enter finishes the polygon; switching tools cancels it.
+  useEffect(() => {
+    if (tool !== 'zone') {
+      setPoly(null)
+      return
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && poly) {
+        e.preventDefault()
+        finalizeZone(poly.pts)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool, poly])
 
   // --- attach transformer to single selected transformable node ---
   useEffect(() => {
@@ -156,13 +195,49 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
 
   const isDrawingTool = tool !== 'select'
 
+  // Effective placement color/label: use the active squad's color when one is
+  // selected in the palette, otherwise the current tool color.
+  const effDraw = () => {
+    const st = useBoardStore.getState()
+    const sq = st.squads.find((s) => s.id === st.activeSquadId) ?? null
+    return {
+      color: sq ? sq.color : st.color,
+      label: sq ? `S${st.squads.indexOf(sq) + 1}` : undefined,
+      rosterSquadId: sq?.id,
+    }
+  }
+
+  const finalizeZone = (pts: number[]) => {
+    if (pts.length < 6) {
+      setPoly(null)
+      return
+    }
+    const { color: c, label, rosterSquadId } = effDraw()
+    addElement({ type: 'zone', points: pts, team, color: c, rotation: 0, label, rosterSquadId } as Omit<BoardElement, 'id' | 'z'>)
+    setPoly(null)
+  }
+
   const onMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     if (readOnly) return
+    if (tool === 'zone') {
+      const p = relPointer()
+      // close when clicking near the first vertex
+      if (poly && poly.pts.length >= 6) {
+        const dx = p.x - poly.pts[0]
+        const dy = p.y - poly.pts[1]
+        if (Math.hypot(dx, dy) < 12 / view.scale) {
+          finalizeZone(poly.pts)
+          return
+        }
+      }
+      setPoly(poly ? { pts: [...poly.pts, p.x, p.y], cx: p.x, cy: p.y } : { pts: [p.x, p.y], cx: p.x, cy: p.y })
+      return
+    }
     if (tool === 'text') {
       const p = relPointer()
       const text = window.prompt('Text:')
       if (text)
-        addElement({ type: 'text', x: p.x, y: p.y, text, fontSize: 22, team, color, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+        addElement({ type: 'text', x: p.x, y: p.y, text, fontSize: 22, team, color: effDraw().color, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
       return
     }
     if (!isDrawingTool) {
@@ -179,6 +254,13 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   }
 
   const onMouseMove = () => {
+    if (tool === 'zone') {
+      if (poly) {
+        const p = relPointer()
+        setPoly({ ...poly, cx: p.x, cy: p.y })
+      }
+      return
+    }
     if (!draft) return
     const p = relPointer()
     if (draft.type === 'pen') {
@@ -196,6 +278,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     const d = draft
     setDraft(null)
     lastPenRef.current = null
+    // measurement keeps its own styling; everything else adopts the squad color
+    const drawColor = d.type === 'measure' ? color : effDraw().color
     if (d.type === 'rect') {
       const [x1, y1, x2, y2] = d.points
       if (Math.abs(x2 - x1) < 4 || Math.abs(y2 - y1) < 4) return
@@ -206,22 +290,22 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         width: Math.abs(x2 - x1),
         height: Math.abs(y2 - y1),
         team,
-        color,
+        color: drawColor,
         rotation: 0,
       } as Omit<BoardElement, 'id' | 'z'>)
     } else if (d.type === 'circle') {
       const [x1, y1, x2, y2] = d.points
       const r = Math.hypot(x2 - x1, y2 - y1)
       if (r < 4) return
-      addElement({ type: 'circle', x: x1, y: y1, radius: r, team, color, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      addElement({ type: 'circle', x: x1, y: y1, radius: r, team, color: drawColor, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
     } else if (d.type === 'pen') {
       if (d.points.length < 4) return
       const pts = simplifyPoints(d.points, 2)
-      addElement({ type: 'pen', points: pts, strokeWidth, team, color, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      addElement({ type: 'pen', points: pts, strokeWidth, team, color: drawColor, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
     } else {
       const moved = Math.hypot(d.points[2] - d.points[0], d.points[3] - d.points[1])
       if (moved < 4) return
-      addElement({ type: d.type, points: d.points, strokeWidth, team, color, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      addElement({ type: d.type, points: d.points, strokeWidth, team, color: drawColor, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
     }
   }
 
@@ -274,12 +358,12 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
-      {!map && (
+      {!hasBg && (
         <div className="absolute inset-0 grid place-items-center text-center text-gray-500 pointer-events-none">
           <div>
             <div className="text-5xl mb-3">🗺️</div>
-            <p className="text-lg">Select a map and layer to start</p>
-            <p className="text-sm text-gray-600">Use the “Select Map” button above</p>
+            <p className="text-lg">Select a map or upload your own image</p>
+            <p className="text-sm text-gray-600">Use “Select Map”, or paste an image (Ctrl+V)</p>
           </div>
         </div>
       )}
@@ -297,6 +381,9 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
+        onDblClick={() => {
+          if (tool === 'zone' && poly) finalizeZone(poly.pts)
+        }}
         onDragEnd={(e) => {
           if (e.target === stageRef.current) setView((v) => ({ ...v, x: e.target.x(), y: e.target.y() }))
         }}
@@ -304,7 +391,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       >
         {/* base layer: background + capture points (static) */}
         <Layer listening={false}>
-          {bg && bgStatus === 'loaded' ? <KonvaImage image={bg} width={MAP_SIZE} height={MAP_SIZE} /> : <GridBackground />}
+          {bg && bgStatus === 'loaded' ? <BackgroundImage img={bg} /> : <GridBackground />}
           {layer?.capturePoints?.map((cp, i) => (
             <Group key={cp.id} x={cp.x * MAP_SIZE} y={cp.y * MAP_SIZE}>
               <Circle radius={14} fill="rgba(234,179,8,0.25)" stroke="#eab308" strokeWidth={2} />
@@ -330,6 +417,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         {/* draft layer: only the in-progress shape re-renders here */}
         <Layer listening={false}>
           {draft && <DraftView draft={draft} color={color} strokeWidth={strokeWidth} mapSize={map?.sizeMeters ?? null} />}
+          {poly && <ZoneDraft poly={poly} color={effDraw().color} />}
         </Layer>
       </Stage>
 
@@ -459,6 +547,16 @@ function Slider({
   )
 }
 
+/** Draws the background image contained within the MAP_SIZE square, preserving aspect. */
+function BackgroundImage({ img }: { img: HTMLImageElement }) {
+  const ar = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1
+  let w = MAP_SIZE
+  let h = MAP_SIZE
+  if (ar >= 1) h = MAP_SIZE / ar
+  else w = MAP_SIZE * ar
+  return <KonvaImage image={img} width={w} height={h} x={(MAP_SIZE - w) / 2} y={(MAP_SIZE - h) / 2} />
+}
+
 function GridBackground() {
   const lines = []
   const step = MAP_SIZE / 16
@@ -515,6 +613,18 @@ function DraftView({
     return <Circle x={x1} y={y1} radius={Math.hypot(x2 - x1, y2 - y1)} stroke={color} strokeWidth={strokeWidth} />
   }
   return null
+}
+
+function ZoneDraft({ poly, color }: { poly: { pts: number[]; cx: number; cy: number }; color: string }) {
+  const live = [...poly.pts, poly.cx, poly.cy]
+  return (
+    <>
+      <Line points={live} stroke={color} strokeWidth={2} closed fill={color + '22'} dash={[6, 5]} perfectDrawEnabled={false} />
+      {Array.from({ length: poly.pts.length / 2 }).map((_, i) => (
+        <Circle key={i} x={poly.pts[i * 2]} y={poly.pts[i * 2 + 1]} radius={4} fill={i === 0 ? '#fff' : color} stroke="#0b0e13" strokeWidth={1} />
+      ))}
+    </>
+  )
 }
 
 interface ElementViewProps {
@@ -632,6 +742,39 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
           change({ x: node.x(), y: node.y(), radius: Math.max(6, el.radius * s) } as Partial<BoardElement>)
         }}
       />
+    )
+  }
+
+  if (el.type === 'zone') {
+    const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+      const dx = e.target.x()
+      const dy = e.target.y()
+      e.target.position({ x: 0, y: 0 })
+      const shifted = el.points.map((p, i) => (i % 2 === 0 ? p + dx : p + dy))
+      change({ points: shifted } as Partial<BoardElement>)
+    }
+    const xs = el.points.filter((_, i) => i % 2 === 0)
+    const ys = el.points.filter((_, i) => i % 2 === 1)
+    const cx = xs.reduce((a, b) => a + b, 0) / xs.length
+    const cy = ys.reduce((a, b) => a + b, 0) / ys.length
+    return (
+      <>
+        <Line
+          {...common}
+          points={el.points}
+          closed
+          stroke={el.color}
+          strokeWidth={2.5}
+          fill={el.color + '2e'}
+          hitStrokeWidth={12}
+          perfectDrawEnabled={false}
+          shadowForStrokeEnabled={false}
+          onDragEnd={onDragEnd}
+        />
+        {el.label && (
+          <Text text={el.label} fontSize={15} fontStyle="bold" fill="#fff" stroke="#000" strokeWidth={0.7} align="center" width={80} offsetX={40} x={cx} y={cy - 8} listening={false} />
+        )}
+      </>
     )
   }
 

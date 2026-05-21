@@ -1,6 +1,7 @@
 import TacticalBoard from './TacticalBoard'
 import SlidesBar from './SlidesBar'
 import VehiclePanel from './VehiclePanel'
+import LayerInfoPanel from './LayerInfoPanel'
 import { useBoardStore } from '../store/useBoardStore'
 import { MAP_BY_ID } from '../data/maps'
 import { ROLE_BY_ID } from '../data/roles'
@@ -80,7 +81,8 @@ export default function TacticSheet() {
         </aside>
       </div>
 
-      {/* vehicle assignments */}
+      {/* layer setup + vehicle assignments */}
+      <LayerInfoPanel readOnly />
       <VehiclePanel readOnly />
     </div>
   )

@@ -26,6 +26,9 @@ interface BoardState {
   // selection / map
   mapId: string | null
   layerId: string | null
+  /** User-supplied background image (data URL); overrides the map layer when set. */
+  customImage: string | null
+  customImageName: string | null
   // tool config
   tool: ToolId
   team: Team
@@ -57,6 +60,7 @@ interface BoardState {
 
   setMap: (mapId: string, layerId: string) => void
   setLayer: (layerId: string) => void
+  setCustomImage: (dataUrl: string | null, name?: string | null) => void
   setTool: (tool: ToolId) => void
   setTeam: (team: Team) => void
   setColor: (color: string) => void
@@ -78,6 +82,7 @@ interface BoardState {
   // roster
   addSquad: () => void
   updateSquad: (id: string, patch: Partial<RosterSquad>) => void
+  setSquadColor: (id: string, color: string) => void
   removeSquad: (id: string) => void
   setActiveSquad: (id: string | null) => void
   setMemberSlot: (squadId: string, index: number, patch: Partial<{ name: string; role: string }>) => void
@@ -85,6 +90,7 @@ interface BoardState {
 
   // vehicles
   addVehicle: (assetId: string) => void
+  addVehiclePreset: (assetId: string, name: string, timing: string) => void
   updateVehicle: (id: string, patch: Partial<VehicleAssignment>) => void
   removeVehicle: (id: string) => void
   toggleVehicleSquad: (id: string, squadId: string) => void
@@ -100,6 +106,8 @@ export const teamColor = (team: Team) => TEAM_COLORS[team]
 export const useBoardStore = create<BoardState>((set, get) => ({
   mapId: null,
   layerId: null,
+  customImage: null,
+  customImageName: null,
   tool: 'select',
   team: 'blufor',
   color: TEAM_COLORS.blufor,
@@ -114,8 +122,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   activeSquadId: null,
   vehicles: [],
 
-  setMap: (mapId, layerId) => set({ mapId, layerId, selectedIds: [] }),
+  setMap: (mapId, layerId) => set({ mapId, layerId, customImage: null, customImageName: null, selectedIds: [] }),
   setLayer: (layerId) => set({ layerId }),
+  setCustomImage: (dataUrl, name = null) => set({ customImage: dataUrl, customImageName: name, selectedIds: [] }),
 
   addSlide: () =>
     set((s) => {
@@ -261,6 +270,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       squads: s.squads.map((sq) => (sq.id === id ? { ...sq, ...patch } : sq)),
     })),
 
+  setSquadColor: (id, color) =>
+    set((s) => {
+      const recolor = (els: Record<string, BoardElement>) => {
+        let changed = false
+        const next: Record<string, BoardElement> = {}
+        for (const [k, e] of Object.entries(els)) {
+          const rid = (e as { rosterSquadId?: string }).rosterSquadId
+          if (rid === id && e.color !== color) {
+            next[k] = { ...e, color } as BoardElement
+            changed = true
+          } else next[k] = e
+        }
+        return changed ? next : els
+      }
+      return {
+        squads: s.squads.map((sq) => (sq.id === id ? { ...sq, color } : sq)),
+        elements: recolor(s.elements),
+        slides: s.slides.map((sl) => ({ ...sl, elements: recolor(sl.elements) })),
+      }
+    }),
+
   removeSquad: (id) =>
     set((s) => ({
       squads: s.squads.filter((sq) => sq.id !== id),
@@ -290,6 +320,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   addVehicle: (assetId) =>
     set((s) => ({
       vehicles: [...s.vehicles, { id: nanoid(6), assetId, squadIds: [], note: '' }],
+    })),
+
+  addVehiclePreset: (assetId, name, timing) =>
+    set((s) => ({
+      vehicles: [...s.vehicles, { id: nanoid(6), assetId, squadIds: [], note: '', name, timing }],
     })),
 
   updateVehicle: (id, patch) =>
@@ -326,6 +361,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       return {
         mapId: snap.mapId,
         layerId: snap.layerId,
+        customImage: snap.customImage ?? null,
+        customImageName: snap.customImageName ?? null,
         slides,
         activeSlideId,
         elements: active.elements,
@@ -338,8 +375,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }),
 
   toSnapshot: () => {
-    const { mapId, layerId, slides, activeSlideId, elements, squads, vehicles } = get()
+    const { mapId, layerId, customImage, customImageName, slides, activeSlideId, elements, squads, vehicles } = get()
     const synced = slides.map((sl) => (sl.id === activeSlideId ? { ...sl, elements } : sl))
-    return { version: 1, mapId, layerId, slides: synced, activeSlideId, squads, vehicles }
+    return { version: 1, mapId, layerId, customImage, customImageName, slides: synced, activeSlideId, squads, vehicles }
   },
 }))
