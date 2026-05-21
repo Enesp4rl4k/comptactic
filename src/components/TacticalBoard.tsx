@@ -317,6 +317,12 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
     if (e.evt.button !== 0) return // ignore middle button
     if (readOnly) return
+    // Ping: flash an expanding ring for everyone (no permanent mark), stays armed.
+    if (tool === 'ping') {
+      const p = relPointer()
+      usePresence.getState().sendPing(p.x, p.y)
+      return
+    }
     // Click-to-place: an armed palette asset drops at the cursor and stays armed
     // so multiple can be placed; right-click/Escape/select tool cancels it.
     if (placingAssetId) {
@@ -559,6 +565,11 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
             <PeerCursors scale={view.scale} />
           </Layer>
         )}
+
+        {/* transient pings (visible to everyone, including briefing viewers) */}
+        <Layer listening={false}>
+          <PingLayer scale={view.scale} />
+        </Layer>
       </Stage>
 
       {!readOnly && <SelectionBar />}
@@ -1019,6 +1030,54 @@ function PeerCursors({ scale }: { scale: number }) {
             <Text x={20 * s} y={20 * s} text={p.name} fontSize={11 * s} fontStyle="bold" fill="#0b0e13" />
           </Group>
         ))}
+    </>
+  )
+}
+
+// Transient "ping" rings: a couple of circles that expand and fade out, used to
+// point at the map while explaining. Driven by a RAF tick while pings exist.
+const PING_MS = 1100
+function PingLayer({ scale }: { scale: number }) {
+  const pings = usePresence((s) => s.pings)
+  const [, force] = useState(0)
+  useEffect(() => {
+    if (!pings.length) return
+    let raf = 0
+    const tick = () => {
+      force((n) => n + 1)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [pings.length])
+
+  const now = Date.now()
+  const s = 1 / scale // keep ping size constant on screen regardless of zoom
+  return (
+    <>
+      {pings.map((p) => {
+        const age = now - p.t
+        if (age < 0 || age > PING_MS) return null
+        return (
+          <Group key={p.id} x={p.x} y={p.y} listening={false}>
+            {[0, 0.33].map((delay, i) => {
+              const prog = Math.min(1, Math.max(0, age / PING_MS - delay))
+              if (prog <= 0 || prog >= 1) return null
+              return (
+                <Circle
+                  key={i}
+                  radius={(8 + prog * 34) * s}
+                  stroke={p.color}
+                  strokeWidth={(3 - prog * 2) * s}
+                  opacity={1 - prog}
+                  listening={false}
+                />
+              )
+            })}
+            <Circle radius={5 * s} fill={p.color} opacity={Math.max(0, 1 - age / PING_MS)} listening={false} />
+          </Group>
+        )
+      })}
     </>
   )
 }

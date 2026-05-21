@@ -14,6 +14,7 @@ export type ToolId =
   | 'zone'
   | 'text'
   | 'measure'
+  | 'ping'
 
 export type ElementType =
   | 'arrow'

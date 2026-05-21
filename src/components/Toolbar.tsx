@@ -12,6 +12,7 @@ const TOOLS: { id: ToolId; label: string; glyph: string }[] = [
   { id: 'zone', label: 'Zone (click corners, double-click / Enter to close)', glyph: '⬠' },
   { id: 'text', label: 'Text', glyph: 'T' },
   { id: 'measure', label: 'Measure (m)', glyph: '📏' },
+  { id: 'ping', label: 'Ping (click to flash a marker for everyone)', glyph: '◎' },
 ]
 
 const TEAMS: { id: Team; label: string; color: string }[] = [
