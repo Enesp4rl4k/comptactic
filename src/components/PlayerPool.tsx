@@ -9,9 +9,11 @@ export default function PlayerPool() {
   const addToPool = useBoardStore((s) => s.addToPool)
   const removeFromPool = useBoardStore((s) => s.removeFromPool)
   const clearPool = useBoardStore((s) => s.clearPool)
+  const memberToPool = useBoardStore((s) => s.memberToPool)
 
   const [text, setText] = useState('')
   const [open, setOpen] = useState(true)
+  const [dropActive, setDropActive] = useState(false)
 
   const parse = (raw: string) =>
     raw
@@ -38,7 +40,30 @@ export default function PlayerPool() {
       </button>
 
       {open && (
-        <div className="p-2 space-y-2">
+        <div
+          className={`p-2 space-y-2 ${dropActive ? 'ring-2 ring-accent/50 ring-inset' : ''}`}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes('memberMove')) {
+              e.preventDefault()
+              if (!dropActive) setDropActive(true)
+            }
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropActive(false)
+          }}
+          onDrop={(e) => {
+            const move = e.dataTransfer.getData('memberMove')
+            if (!move) return
+            e.preventDefault()
+            setDropActive(false)
+            try {
+              const { squadId, memberId } = JSON.parse(move)
+              memberToPool(squadId, memberId)
+            } catch {
+              /* ignore */
+            }
+          }}
+        >
           <div className="flex gap-2">
             <textarea
               value={text}

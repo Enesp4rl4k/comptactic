@@ -7,10 +7,17 @@ import type { RosterSquad, Team } from '../types'
 
 const MAX_SLOTS = 9 // Squad holds at most 9 players in-game
 
+/** Up to 2 uppercase initials from a player name (for the squad avatar). */
+function memberInitials(name: string): string {
+  const parts = name.split(/[\s_.-]+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '?'
+}
+
 // Excel-style line-up: squads = columns, players = rows.
 // Rows grow dynamically: a new empty row opens as players are added (max 9).
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad } =
+  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad, moveMember } =
     useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
@@ -79,6 +86,7 @@ export default function LineupGrid() {
                 onSlot={(i, p) => setMemberSlot(sq.id, i, p)}
                 onRemoveSlot={(i) => removeMemberSlot(sq.id, i)}
                 onAssign={(name) => assignPlayerToSquad(name, sq.id)}
+                onMoveHere={(fromSquadId, memberId) => moveMember(fromSquadId, memberId, sq.id)}
               />
             ))}
 
@@ -106,6 +114,7 @@ function SquadColumn({
   onSlot,
   onRemoveSlot,
   onAssign,
+  onMoveHere,
 }: {
   squad: RosterSquad
   rows: number
@@ -115,6 +124,7 @@ function SquadColumn({
   onSlot: (index: number, patch: Partial<{ name: string; role: string }>) => void
   onRemoveSlot: (index: number) => void
   onAssign: (name: string) => void
+  onMoveHere: (fromSquadId: string, memberId: string) => void
 }) {
   const accent = squad.color
   const count = squad.members.length
@@ -147,7 +157,19 @@ function SquadColumn({
         e.preventDefault()
         setDragOver(false)
         const name = e.dataTransfer.getData('playerName')
-        if (name) onAssign(name)
+        if (name) {
+          onAssign(name)
+          return
+        }
+        const move = e.dataTransfer.getData('memberMove')
+        if (move) {
+          try {
+            const { squadId, memberId } = JSON.parse(move)
+            if (squadId !== squad.id) onMoveHere(squadId, memberId)
+          } catch {
+            /* ignore */
+          }
+        }
       }}
     >
       {/* header */}
@@ -190,6 +212,22 @@ function SquadColumn({
         const isLeader = i === 0
         return (
           <div key={i} className={`flex items-center gap-1 h-9 px-1.5 border-b border-edge/40 ${isAddRow ? 'opacity-70' : ''}`}>
+            {!isAddRow && m ? (
+              <div
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('memberMove', JSON.stringify({ squadId: squad.id, memberId: m.id, name: m.name }))
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                title="Drag to another squad or back to the pool"
+                className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9px] font-bold text-white cursor-grab active:cursor-grabbing"
+                style={{ background: squad.color }}
+              >
+                {memberInitials(m.name)}
+              </div>
+            ) : (
+              <span className="h-5 w-5 shrink-0" />
+            )}
             <select
               value={m?.role ?? (isLeader ? 'sl' : 'rifleman')}
               onChange={(e) => onSlot(i, { role: e.target.value })}

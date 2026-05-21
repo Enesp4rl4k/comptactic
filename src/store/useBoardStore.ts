@@ -177,6 +177,8 @@ interface BoardState {
   setActiveSquad: (id: string | null) => void
   setMemberSlot: (squadId: string, index: number, patch: Partial<{ name: string; role: string }>) => void
   removeMemberSlot: (squadId: string, index: number) => void
+  moveMember: (fromSquadId: string, memberId: string, toSquadId: string) => void
+  memberToPool: (squadId: string, memberId: string) => void
 
   // player pool (paste sign-ups, then distribute to squads)
   addToPool: (names: string[]) => void
@@ -506,6 +508,35 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         sq.id === squadId ? { ...sq, members: sq.members.filter((_, i) => i !== index) } : sq,
       ),
     })),
+
+  moveMember: (fromSquadId, memberId, toSquadId) =>
+    set((s) => {
+      if (fromSquadId === toSquadId) return s
+      const from = s.squads.find((sq) => sq.id === fromSquadId)
+      const to = s.squads.find((sq) => sq.id === toSquadId)
+      const m = from?.members.find((mm) => mm.id === memberId)
+      if (!from || !to || !m || to.members.length >= MAX_MEMBERS) return s
+      return {
+        squads: s.squads.map((sq) => {
+          if (sq.id === fromSquadId) return { ...sq, members: sq.members.filter((mm) => mm.id !== memberId) }
+          if (sq.id === toSquadId) return { ...sq, members: [...sq.members, m] }
+          return sq
+        }),
+      }
+    }),
+
+  memberToPool: (squadId, memberId) =>
+    set((s) => {
+      const sq = s.squads.find((x) => x.id === squadId)
+      const m = sq?.members.find((mm) => mm.id === memberId)
+      if (!m) return s
+      const name = m.name.trim()
+      const playerPool = name && !s.playerPool.includes(name) ? [...s.playerPool, name] : s.playerPool
+      return {
+        squads: s.squads.map((x) => (x.id === squadId ? { ...x, members: x.members.filter((mm) => mm.id !== memberId) } : x)),
+        playerPool,
+      }
+    }),
 
   addToPool: (names) =>
     set((s) => {

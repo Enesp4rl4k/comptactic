@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ASSETS, ASSET_BY_ID, iconUrl } from '../data/assets'
+import { ASSETS, ASSET_BY_ID, iconUrl, type AssetDef } from '../data/assets'
 import { useBoardStore } from '../store/useBoardStore'
+import { useLayerInfo, assetIdForIcon, timingLabel } from '../lib/useLayerInfo'
 import type { VehicleAssignment } from '../types'
 
 const VEHICLE_ASSETS = ASSETS.filter((a) => a.category === 'vehicle')
@@ -11,9 +12,21 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
   const vehicles = useBoardStore((s) => s.vehicles)
   const squads = useBoardStore((s) => s.squads)
   const addVehicle = useBoardStore((s) => s.addVehicle)
+  const addVehiclePreset = useBoardStore((s) => s.addVehiclePreset)
+  const layerId = useBoardStore((s) => s.layerId)
+  const info = useLayerInfo(layerId)
   const [adding, setAdding] = useState(false)
 
   const squadIndex = (id: string) => squads.findIndex((s) => s.id === id)
+
+  // Add a vehicle, prefilling timing from the layer's matching vehicle if found.
+  const onAddVehicle = (a: AssetDef) => {
+    const layerVehicles = [...(info?.t1?.v ?? []), ...(info?.t2?.v ?? [])]
+    const match = layerVehicles.find((v) => assetIdForIcon(v.i) === a.id)
+    if (match) addVehiclePreset(a.id, match.q > 1 ? `${match.q}× ${match.n}` : match.n, timingLabel(match.d, match.r))
+    else addVehicle(a.id)
+    setAdding(false)
+  }
 
   return (
     <div className="border-t border-edge bg-panel">
@@ -33,10 +46,7 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
                 {VEHICLE_ASSETS.map((a) => (
                   <button
                     key={a.id}
-                    onClick={() => {
-                      addVehicle(a.id)
-                      setAdding(false)
-                    }}
+                    onClick={() => onAddVehicle(a)}
                     className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-edge"
                   >
                     {iconUrl(a, 'blufor') ? (
