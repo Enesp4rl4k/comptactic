@@ -192,6 +192,9 @@ interface BoardState {
   updateVehicle: (id: string, patch: Partial<VehicleAssignment>) => void
   removeVehicle: (id: string) => void
   toggleVehicleSquad: (id: string, squadId: string) => void
+  assignSquadToVehicle: (id: string, squadId: string) => void
+  addVehicleCrew: (id: string, name: string) => void
+  removeVehicleCrew: (id: string, name: string) => void
 
   loadSnapshot: (snap: BoardSnapshot) => void
   applyRemote: (snap: BoardSnapshot) => void
@@ -603,6 +606,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
             }
           : v,
       ),
+    })),
+
+  assignSquadToVehicle: (id, squadId) =>
+    set((s) => ({
+      vehicles: s.vehicles.map((v) =>
+        v.id === id && !v.squadIds.includes(squadId) ? { ...v, squadIds: [...v.squadIds, squadId] } : v,
+      ),
+    })),
+
+  addVehicleCrew: (id, name) =>
+    set((s) => ({
+      vehicles: s.vehicles.map((v) => {
+        if (v.id !== id) return v
+        const crew = v.crew ?? []
+        return crew.includes(name) ? v : { ...v, crew: [...crew, name] }
+      }),
+    })),
+
+  removeVehicleCrew: (id, name) =>
+    set((s) => ({
+      vehicles: s.vehicles.map((v) => (v.id === id ? { ...v, crew: (v.crew ?? []).filter((n) => n !== name) } : v)),
     })),
 
   applyRemote: (snap) =>

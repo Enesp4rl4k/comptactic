@@ -84,10 +84,55 @@ function VehicleCard({
   const updateVehicle = useBoardStore((s) => s.updateVehicle)
   const removeVehicle = useBoardStore((s) => s.removeVehicle)
   const toggleVehicleSquad = useBoardStore((s) => s.toggleVehicleSquad)
+  const assignSquadToVehicle = useBoardStore((s) => s.assignSquadToVehicle)
+  const addVehicleCrew = useBoardStore((s) => s.addVehicleCrew)
+  const removeVehicleCrew = useBoardStore((s) => s.removeVehicleCrew)
   const asset = ASSET_BY_ID[v.assetId]
+  const [dragOver, setDragOver] = useState(false)
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const sq = e.dataTransfer.getData('squadMove')
+    if (sq) {
+      assignSquadToVehicle(v.id, sq)
+      return
+    }
+    const member = e.dataTransfer.getData('memberMove')
+    if (member) {
+      try {
+        const { name } = JSON.parse(member)
+        if (name) addVehicleCrew(v.id, name)
+      } catch {
+        /* ignore */
+      }
+      return
+    }
+    const player = e.dataTransfer.getData('playerName')
+    if (player) addVehicleCrew(v.id, player)
+  }
 
   return (
-    <div className="shrink-0 w-56 rounded border border-edge bg-panel2 p-2">
+    <div
+      className={`shrink-0 w-56 rounded border bg-panel2 p-2 transition-colors ${
+        dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
+      }`}
+      onDragOver={
+        readOnly
+          ? undefined
+          : (e) => {
+              const t = e.dataTransfer.types
+              if (t.includes('squadMove') || t.includes('memberMove') || t.includes('playerName')) {
+                e.preventDefault()
+                if (!dragOver) setDragOver(true)
+              }
+            }
+      }
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+      }}
+      onDrop={readOnly ? undefined : onDrop}
+    >
       <div className="flex items-center gap-2">
         {iconUrl(asset, 'blufor') ? (
           <img src={iconUrl(asset, 'blufor')!} alt="" className="h-6 w-6 object-contain" />
@@ -134,6 +179,22 @@ function VehicleCard({
           )
         })}
       </div>
+
+      {/* crew (dragged-in players) */}
+      {(v.crew?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {v.crew!.map((name) => (
+            <span key={name} className="flex items-center gap-1 rounded bg-panel border border-edge px-1.5 h-5 text-[10px] text-gray-200">
+              👤 {name}
+              {!readOnly && (
+                <button onClick={() => removeVehicleCrew(v.id, name)} className="text-gray-500 hover:text-red-400 cursor-pointer" title="Remove">
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* crew note */}
       {readOnly ? (

@@ -166,6 +166,8 @@ export interface VehicleAssignment {
   name?: string
   /** Squads assigned to this vehicle. */
   squadIds: string[]
+  /** Specific player nicks crewing this vehicle (dragged in). */
+  crew?: string[]
   /** Free-form crew note / specific players. */
   note?: string
   /** Spawn / respawn timing note, e.g. "0:00 · resp 6:00". */

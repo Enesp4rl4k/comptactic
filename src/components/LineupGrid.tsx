@@ -174,6 +174,17 @@ function SquadColumn({
     >
       {/* header */}
       <div className="flex items-center gap-1 px-2 h-[42px]" style={{ background: accent + '22', borderBottom: `2px solid ${accent}` }}>
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('squadMove', squad.id)
+            e.dataTransfer.effectAllowed = 'copy'
+          }}
+          title="Drag squad onto a vehicle"
+          className="shrink-0 text-gray-500 text-xs cursor-grab active:cursor-grabbing select-none"
+        >
+          ⠿
+        </span>
         <input
           type="color"
           value={accent}
