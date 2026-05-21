@@ -14,6 +14,8 @@ export interface Peer {
   x: number | null
   y: number | null
   t: number
+  /** True for the peer that created the session (room host). */
+  host?: boolean
 }
 
 export interface Ping {
@@ -37,7 +39,7 @@ const savedColor = () => {
   return c
 }
 
-type Sender = (event: 'cursor' | 'ping', payload: unknown) => void
+type Sender = (event: 'cursor' | 'ping' | 'kick', payload: unknown) => void
 
 interface PresenceState {
   peers: Record<string, Peer>
@@ -45,9 +47,14 @@ interface PresenceState {
   name: string
   color: string
   myId: string
+  /** Whether this client created the session (can kick others). */
+  host: boolean
+  setHost: (h: boolean) => void
   setName: (n: string) => void
   setCursor: (x: number | null, y: number | null) => void
   sendPing: (x: number, y: number) => void
+  /** Host-only: remove a peer from the live session. */
+  kick: (id: string) => void
   _send?: Sender
   start: (roomId: string) => () => void
 }
@@ -58,6 +65,9 @@ export const usePresence = create<PresenceState>((set, get) => ({
   name: savedName(),
   color: savedColor(),
   myId,
+  host: false,
+
+  setHost: (h) => set({ host: h }),
 
   setName: (n) => {
     localStorage.setItem('ct:presence:name', n)
@@ -67,7 +77,18 @@ export const usePresence = create<PresenceState>((set, get) => ({
 
   setCursor: (x, y) => {
     const s = get()
-    s._send?.('cursor', { id: myId, name: s.name || 'Guest', color: s.color, x, y, t: Date.now() })
+    s._send?.('cursor', { id: myId, name: s.name || 'Guest', color: s.color, x, y, t: Date.now(), host: s.host })
+  },
+
+  kick: (id) => {
+    const s = get()
+    if (!s.host) return
+    s._send?.('kick', { target: id, by: myId })
+    set((st) => {
+      const peers = { ...st.peers }
+      delete peers[id]
+      return { peers }
+    })
   },
 
   sendPing: (x, y) => {
@@ -89,18 +110,34 @@ export const usePresence = create<PresenceState>((set, get) => ({
       if (!p) return
       set((s) => (s.pings.some((x) => x.id === p.id) ? s : { pings: [...s.pings, p] }))
     }
+    const recvKick = (k: { target: string; by: string }) => {
+      if (!k) return
+      if (k.target === myId) {
+        // We were removed by the host: leave the room and start a fresh session.
+        alert('You were removed from this session by the host.')
+        window.location.href = window.location.origin + window.location.pathname
+        return
+      }
+      set((s) => {
+        const peers = { ...s.peers }
+        delete peers[k.target]
+        return { peers }
+      })
+    }
 
     if (bc) {
-      bc.onmessage = (e: MessageEvent<{ kind: 'cursor' | 'ping'; payload: unknown }>) => {
+      bc.onmessage = (e: MessageEvent<{ kind: 'cursor' | 'ping' | 'kick'; payload: unknown }>) => {
         const m = e.data
         if (!m) return
         if (m.kind === 'cursor') recvCursor(m.payload as Peer)
         else if (m.kind === 'ping') recvPing(m.payload as Ping)
+        else if (m.kind === 'kick') recvKick(m.payload as { target: string; by: string })
       }
     }
     if (channel) {
       channel.on('broadcast', { event: 'cursor' }, ({ payload }: { payload: Peer }) => recvCursor(payload))
       channel.on('broadcast', { event: 'ping' }, ({ payload }: { payload: Ping }) => recvPing(payload))
+      channel.on('broadcast', { event: 'kick' }, ({ payload }: { payload: { target: string; by: string } }) => recvKick(payload))
       channel.subscribe()
     }
 
@@ -113,7 +150,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
     // heartbeat so peers know we're online even when the cursor is idle
     const hb = setInterval(() => {
       const s = get()
-      send('cursor', { id: myId, name: s.name || 'Guest', color: s.color, x: null, y: null, t: Date.now() })
+      send('cursor', { id: myId, name: s.name || 'Guest', color: s.color, x: null, y: null, t: Date.now(), host: s.host })
     }, 3000)
     // drop stale peers and expired pings
     const prune = setInterval(() => {

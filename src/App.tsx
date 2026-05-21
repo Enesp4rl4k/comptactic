@@ -111,9 +111,17 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // presence: join the room, default the display name from the signed-in email
+  // presence: join the room, default the display name from the signed-in email.
+  // The client that created the room (no ?room in the URL) is the host; the flag
+  // is persisted per-room so a refresh keeps host rights.
   useEffect(() => {
-    const stop = usePresence.getState().start(getRoomId())
+    const hadRoom = !!new URLSearchParams(window.location.search).get('room')
+    const room = getRoomId()
+    const hostKey = 'ct:host:' + room
+    const isHost = hadRoom ? localStorage.getItem(hostKey) === '1' : true
+    if (isHost) localStorage.setItem(hostKey, '1')
+    usePresence.getState().setHost(isHost)
+    const stop = usePresence.getState().start(room)
     return stop
   }, [])
   useEffect(() => {
@@ -299,39 +307,84 @@ export default function App() {
   )
 }
 
-// Avatars of everyone in the same room. Click your own to set a display name.
+// Session members. Avatars open a dropdown listing everyone in the room; the
+// host (session creator) can rename themselves and kick other members.
 function OnlineBar() {
   const peers = usePresence((s) => s.peers)
   const name = usePresence((s) => s.name)
   const color = usePresence((s) => s.color)
+  const host = usePresence((s) => s.host)
   const setName = usePresence((s) => s.setName)
+  const kick = usePresence((s) => s.kick)
+  const [open, setOpen] = useState(false)
   const others = Object.values(peers)
+  const total = others.length + 1
   const initial = (n: string) => (n.trim().charAt(0) || '?').toUpperCase()
 
   return (
-    <div className="flex items-center -space-x-1.5 mr-1" title={`${others.length + 1} online`}>
+    <div className="relative mr-1">
       <button
-        onClick={() => {
-          const n = window.prompt('Your display name:', name)
-          if (n != null) setName(n.trim())
-        }}
-        className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel cursor-pointer"
-        style={{ background: color }}
-        title={`You${name ? ` · ${name}` : ' · click to set name'}`}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 cursor-pointer"
+        title={`${total} in session`}
       >
-        {initial(name || 'You')}
-      </button>
-      {others.slice(0, 5).map((p) => (
-        <div
-          key={p.id}
-          className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel"
-          style={{ background: p.color }}
-          title={p.name}
-        >
-          {initial(p.name)}
+        <div className="flex items-center -space-x-1.5">
+          <span className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel" style={{ background: color }}>
+            {initial(name || 'You')}
+          </span>
+          {others.slice(0, 3).map((p) => (
+            <span key={p.id} className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel" style={{ background: p.color }}>
+              {initial(p.name)}
+            </span>
+          ))}
         </div>
-      ))}
-      {others.length > 5 && <span className="pl-2.5 text-xs text-gray-400">+{others.length - 5}</span>}
+        {total > 4 && <span className="text-xs text-gray-400">+{total - 4}</span>}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1.5 z-50 w-64 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
+            <div className="px-3 py-2 text-xs text-gray-400 border-b border-edge">In this session · {total}</div>
+
+            {/* you */}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <span className="h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold text-black" style={{ background: color }}>
+                {initial(name || 'You')}
+              </span>
+              <span className="text-sm text-gray-100 truncate">{name || 'You'} <span className="text-gray-500">(you)</span></span>
+              {host && <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">HOST</span>}
+              <button
+                onClick={() => { const n = window.prompt('Your display name:', name); if (n != null) setName(n.trim()) }}
+                className="ml-auto text-[11px] text-gray-400 hover:text-white cursor-pointer"
+              >
+                rename
+              </button>
+            </div>
+
+            {/* peers */}
+            {others.length === 0 && <div className="px-3 py-2 text-[11px] text-gray-600">No one else here yet. Use Share to invite.</div>}
+            {others.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 px-3 py-2 border-t border-edge/60">
+                <span className="h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold text-black" style={{ background: p.color }}>
+                  {initial(p.name)}
+                </span>
+                <span className="text-sm text-gray-200 truncate">{p.name}</span>
+                {p.host && <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">HOST</span>}
+                {host && (
+                  <button
+                    onClick={() => { if (confirm(`Remove ${p.name} from the session?`)) kick(p.id) }}
+                    className="ml-auto text-[11px] px-2 py-0.5 rounded border border-edge text-gray-400 hover:text-red-400 hover:border-red-500/60 cursor-pointer"
+                    title="Kick"
+                  >
+                    Kick
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
