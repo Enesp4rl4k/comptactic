@@ -144,26 +144,23 @@ export default function App() {
     }
   }
 
-  // Copy a LIVE collaboration link (same ?room=) so others edit together in real time.
-  const onInvite = async () => {
-    const room = getRoomId()
-    const url = `${window.location.origin}${window.location.pathname}?room=${room}`
-    await copyLink(url, 'Live collaboration link copied — others editing here see your changes')
-  }
-
+  // Share = open the plan AND join the same live room, so opening the link starts
+  // real-time collaboration (edits sync both ways).
   const onShare = async () => {
+    const room = getRoomId()
+    const base = `${window.location.origin}${window.location.pathname}`
     // Prefer a short DB-backed link when Supabase is configured.
     if (isSupabaseConfigured) {
       try {
         const id = await createShare(store.toSnapshot())
-        const url = `${window.location.origin}${window.location.pathname}?s=${id}`
-        await copyLink(url, 'Short share link copied')
+        await copyLink(`${base}?s=${id}&room=${room}`, 'Live share link copied — edits sync in real time')
         return
       } catch {
         /* fall back to hash link */
       }
     }
-    await copyLink(encodeToHash(store.toSnapshot()), 'Share link copied to clipboard')
+    const b64 = encodeToHash(store.toSnapshot()).split('#plan=')[1] ?? ''
+    await copyLink(`${base}?room=${room}#plan=${b64}`, 'Live share link copied — edits sync in real time')
   }
 
   // Save the current plan to the cloud (create or update).
@@ -228,8 +225,7 @@ export default function App() {
             onPDF={async () => { flash('Exporting PDF…'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
             onAllPNG={async () => { flash('Exporting PNG…'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
           />
-          <button className="btn" onClick={onInvite} title="Copy a live co-op link (real-time editing)">🟢 Co-op</button>
-          <button className="btn btn-success" onClick={onShare}>Share</button>
+          <button className="btn btn-success" onClick={onShare} title="Copy a live link — others editing it sync in real time">Share</button>
           {isSupabaseConfigured && (
             <button className="btn" onClick={() => setPlansOpen(true)}>☁ Plans</button>
           )}
