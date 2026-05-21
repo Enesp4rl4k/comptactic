@@ -1,0 +1,33 @@
+src/components/PlayerPool.tsx
+  s_f9303379803485::t_39537824455095 12,16
+  s_f9303379803485::t_8a88d72875a6f2 43-66
+src/components/LineupGrid.tsx
+  s_f9303379803485::t_6e34cb3143a309 20
+  s_f9303379803485::t_bf9632de748e44 160-172
+  s_f9303379803485::t_bb3acd5fe8f422 215-230
+  s_f9303379803485::t_026dac1fe35f0d 10-16
+  s_f9303379803485::t_5d274031a6cf17 117,127
+  s_f9303379803485::t_2ddec539ff90a1 89
+src/store/useBoardStore.ts
+  s_f9303379803485::t_ed6b30a1a5a1a5 180-181
+  s_f9303379803485::t_626bca01299053 512-540
+src/components/VehiclePanel.tsx
+  s_f9303379803485::t_14617112320fc7 49
+  s_f9303379803485::t_3ddf0648af2d83 2,4,15-17,22-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "ac4fe52b76a0e577a850b8d9f8fc8b6d4beb281b",
+  "prompts": {},
+  "sessions": {
+    "s_f9303379803485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97b315-d7ef-409f-a519-8cf75a56c9ee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
