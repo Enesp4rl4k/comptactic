@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { ASSETS, ASSET_BY_ID, iconUrl, type AssetDef } from '../data/assets'
 import { useBoardStore } from '../store/useBoardStore'
-import { useLayerInfo, assetIdForIcon, timingLabel } from '../lib/useLayerInfo'
 import type { VehicleAssignment } from '../types'
 
 const VEHICLE_ASSETS = ASSETS.filter((a) => a.category === 'vehicle')
@@ -12,19 +11,14 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
   const vehicles = useBoardStore((s) => s.vehicles)
   const squads = useBoardStore((s) => s.squads)
   const addVehicle = useBoardStore((s) => s.addVehicle)
-  const addVehiclePreset = useBoardStore((s) => s.addVehiclePreset)
-  const layerId = useBoardStore((s) => s.layerId)
-  const info = useLayerInfo(layerId)
   const [adding, setAdding] = useState(false)
 
   const squadIndex = (id: string) => squads.findIndex((s) => s.id === id)
 
-  // Add a vehicle, prefilling timing from the layer's matching vehicle if found.
+  // Timing is filled by the user to describe the vehicle's route in the plan,
+  // not the layer's spawn/respawn — so just add the vehicle.
   const onAddVehicle = (a: AssetDef) => {
-    const layerVehicles = [...(info?.t1?.v ?? []), ...(info?.t2?.v ?? [])]
-    const match = layerVehicles.find((v) => assetIdForIcon(v.i) === a.id)
-    if (match) addVehiclePreset(a.id, match.q > 1 ? `${match.q}× ${match.n}` : match.n, timingLabel(match.d, match.r))
-    else addVehicle(a.id)
+    addVehicle(a.id)
     setAdding(false)
   }
 
@@ -159,7 +153,7 @@ function VehicleCard({
       ) : (
         <input
           value={v.timing ?? ''}
-          placeholder="timing e.g. 0:00 · resp 6:00"
+          placeholder="route timing e.g. move 2:00 → arrive 4:00"
           onChange={(e) => updateVehicle(v.id, { timing: e.target.value })}
           className="mt-1 w-full bg-panel text-[11px] text-amber-200 rounded border border-edge px-1.5 py-1 outline-none focus:border-amber-500"
         />

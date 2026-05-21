@@ -85,8 +85,8 @@ function TeamColumn({
               <span className="text-[10px] text-amber-300/90 shrink-0">{timing}</span>
               {!readOnly && (
                 <button
-                  onClick={() => addVehiclePreset(assetIdForIcon(v.i), v.q > 1 ? `${v.q}× ${v.n}` : v.n, timing)}
-                  title="Add to assignments with timing"
+                  onClick={() => addVehiclePreset(assetIdForIcon(v.i), v.q > 1 ? `${v.q}× ${v.n}` : v.n, '')}
+                  title="Add to assignments"
                   className="shrink-0 h-5 w-5 grid place-items-center rounded bg-accent hover:brightness-125 text-white text-xs leading-none cursor-pointer"
                 >
                   +

@@ -881,6 +881,13 @@ function IconView({
   const url = asset?.icon ? `/icons/blue/${asset.icon}.svg` : null
   const img = useTintedIcon(url, el.color)
 
+  // FOB radio shows its in-game 150 m / 300 m radius rings on hover.
+  const [hover, setHover] = useState(false)
+  const mapId = useBoardStore((s) => s.mapId)
+  const sizeMeters = mapId ? MAP_BY_ID[mapId]?.sizeMeters ?? null : null
+  const showRings = el.assetId === 'fob' && hover && !!sizeMeters
+  const metersToStage = sizeMeters ? MAP_SIZE / sizeMeters : 0
+
   const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => commitXYDrag(e.target, el, change)
   const onTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
     const node = e.target
@@ -899,6 +906,8 @@ function IconView({
     scaleY: el.scale,
     onDragEnd,
     onTransformEnd,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
   }
 
   // Real in-game SVG icon
@@ -906,6 +915,7 @@ function IconView({
     const S = 44
     return (
       <Group {...groupProps}>
+        {showRings && <RadioRings metersToStage={metersToStage} scale={el.scale} />}
         <KonvaImage image={img} width={S} height={S} offsetX={S / 2} offsetY={S / 2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />
       </Group>
     )
@@ -917,10 +927,28 @@ function IconView({
   const shape = asset?.shape ?? 'circle'
   return (
     <Group {...groupProps}>
+      {showRings && <RadioRings metersToStage={metersToStage} scale={el.scale} />}
       {shape === 'circle' && <Circle radius={R} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       {shape === 'square' && <Rect width={R * 2} height={R * 2} offsetX={R} offsetY={R} cornerRadius={4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       {shape === 'diamond' && <RegularPolygon sides={4} radius={R + 4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       <Text text={asset?.glyph ?? '?'} fontSize={20} align="center" verticalAlign="middle" width={R * 2} height={R * 2} offsetX={R} offsetY={R} listening={false} />
     </Group>
+  )
+}
+
+// FOB radio coverage rings (150 m green, 300 m amber). Sizes divide by the icon
+// scale so the rings stay at true map-metre radius regardless of icon size.
+function RadioRings({ metersToStage, scale }: { metersToStage: number; scale: number }) {
+  const r150 = (150 * metersToStage) / scale
+  const r300 = (300 * metersToStage) / scale
+  const sw = 1.5 / scale
+  const dash = [6 / scale, 5 / scale]
+  return (
+    <>
+      <Circle radius={r300} stroke="#eab308" strokeWidth={sw} dash={dash} fill="rgba(234,179,8,0.04)" listening={false} />
+      <Circle radius={r150} stroke="#22c55e" strokeWidth={sw} dash={dash} fill="rgba(34,197,94,0.06)" listening={false} />
+      <Text text="150m" x={4 / scale} y={-r150 - 14 / scale} fontSize={11 / scale} fontStyle="bold" fill="#22c55e" listening={false} />
+      <Text text="300m" x={4 / scale} y={-r300 - 14 / scale} fontSize={11 / scale} fontStyle="bold" fill="#eab308" listening={false} />
+    </>
   )
 }
