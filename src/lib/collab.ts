@@ -27,9 +27,10 @@ export function getRoomId(): string {
   return room
 }
 
-/** Drop the heavy custom-image data URL from a snapshot before sending. */
+/** Keep a hosted (URL) custom image but drop heavy inline data-URLs before sending. */
 function lighten(snap: BoardSnapshot): BoardSnapshot {
-  return { ...snap, customImage: null, customImageName: null }
+  const isUrl = !!snap.customImage && /^https?:\/\//.test(snap.customImage)
+  return isUrl ? snap : { ...snap, customImage: null, customImageName: null }
 }
 
 export interface CollabHandle {

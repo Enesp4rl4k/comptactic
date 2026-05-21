@@ -16,6 +16,7 @@ import type Konva from 'konva'
 import { useBoardStore } from '../store/useBoardStore'
 import { useImage } from '../lib/useImage'
 import { useTintedIcon } from '../lib/useTintedIcon'
+import { canUploadImage, uploadPlanImage } from '../lib/storage'
 import { simplifyPoints } from '../lib/simplify'
 import { MAP_BY_ID } from '../data/maps'
 import { ASSET_BY_ID } from '../data/assets'
@@ -193,9 +194,15 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       if (!item) return
       const file = item.getAsFile()
       if (!file) return
-      const reader = new FileReader()
-      reader.onload = () => setCustomImage(reader.result as string, 'Pasted image')
-      reader.readAsDataURL(file)
+      const useLocal = () => {
+        const reader = new FileReader()
+        reader.onload = () => setCustomImage(reader.result as string, 'Pasted image')
+        reader.readAsDataURL(file)
+      }
+      canUploadImage().then((ok) => {
+        if (ok) uploadPlanImage(file).then((url) => setCustomImage(url, 'Pasted image')).catch(useLocal)
+        else useLocal()
+      })
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)

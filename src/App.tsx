@@ -11,6 +11,7 @@ import PlayerPool from './components/PlayerPool'
 import TacticSheet from './components/TacticSheet'
 import AuthModal from './components/AuthModal'
 import PlansModal from './components/PlansModal'
+import { createShare, getShare } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { startCollab, getRoomId } from './lib/collab'
@@ -40,8 +41,19 @@ export default function App() {
   const map = store.mapId ? MAP_BY_ID[store.mapId] : null
   const mapLabel = store.customImage ? store.customImageName || 'Custom image' : map ? map.name : 'Select Map'
 
-  // load shared plan from URL, else autosave
+  // load shared plan: ?s=<id> short link, then #hash, else autosave
   useEffect(() => {
+    const shortId = new URLSearchParams(window.location.search).get('s')
+    if (shortId) {
+      getShare(shortId).then((snap) => {
+        if (snap) store.loadSnapshot(snap)
+        else {
+          const auto = loadLocal()
+          if (auto) store.loadSnapshot(auto)
+        }
+      })
+      return
+    }
     const fromHash = decodeFromHash()
     if (fromHash) {
       store.loadSnapshot(fromHash)
@@ -102,16 +114,30 @@ export default function App() {
     setTimeout(() => setToast(null), 2200)
   }
 
-  const onShare = async () => {
-    const url = encodeToHash(store.toSnapshot())
+  const copyLink = async (url: string, msg: string) => {
     try {
       await navigator.clipboard.writeText(url)
       history.replaceState(null, '', url)
-      flash('Share link copied to clipboard')
+      flash(msg)
     } catch {
       history.replaceState(null, '', url)
       flash('Link written to the address bar')
     }
+  }
+
+  const onShare = async () => {
+    // Prefer a short DB-backed link when Supabase is configured.
+    if (isSupabaseConfigured) {
+      try {
+        const id = await createShare(store.toSnapshot())
+        const url = `${window.location.origin}${window.location.pathname}?s=${id}`
+        await copyLink(url, 'Short share link copied')
+        return
+      } catch {
+        /* fall back to hash link */
+      }
+    }
+    await copyLink(encodeToHash(store.toSnapshot()), 'Share link copied to clipboard')
   }
 
   const onImport = async () => {

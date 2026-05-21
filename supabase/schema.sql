@@ -45,3 +45,35 @@ create policy "plans_update_own" on public.plans
 drop policy if exists "plans_delete_own" on public.plans;
 create policy "plans_delete_own" on public.plans
   for delete using (auth.uid() = user_id);
+
+-- ----------------------------------------------------------------------------
+-- Short share links: anyone can create a share and read one by id (like a paste).
+-- ----------------------------------------------------------------------------
+create table if not exists public.shares (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.shares enable row level security;
+
+drop policy if exists "shares_read" on public.shares;
+create policy "shares_read" on public.shares for select using (true);
+
+drop policy if exists "shares_insert" on public.shares;
+create policy "shares_insert" on public.shares for insert with check (true);
+
+-- ----------------------------------------------------------------------------
+-- Storage bucket for user-uploaded background images (public read).
+-- ----------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('plan-images', 'plan-images', true)
+on conflict (id) do nothing;
+
+drop policy if exists "plan_images_read" on storage.objects;
+create policy "plan_images_read" on storage.objects
+  for select using (bucket_id = 'plan-images');
+
+drop policy if exists "plan_images_insert" on storage.objects;
+create policy "plan_images_insert" on storage.objects
+  for insert with check (bucket_id = 'plan-images' and auth.role() = 'authenticated');

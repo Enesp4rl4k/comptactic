@@ -1,21 +1,37 @@
 import { useState } from 'react'
 import { MAPS } from '../data/maps'
 import { useBoardStore } from '../store/useBoardStore'
+import { canUploadImage, uploadPlanImage } from '../lib/storage'
 
 export default function MapPicker({ onClose }: { onClose: () => void }) {
   const { setMap, mapId, setCustomImage } = useBoardStore()
   const [activeMap, setActiveMap] = useState(mapId ?? MAPS[0].id)
   const map = MAPS.find((m) => m.id === activeMap) ?? MAPS[0]
 
-  const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setCustomImage(reader.result as string, file.name)
-      onClose()
+    const useLocal = () => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setCustomImage(reader.result as string, file.name)
+        onClose()
+      }
+      reader.readAsDataURL(file)
     }
-    reader.readAsDataURL(file)
+    // Upload to Storage when signed in (small URL, syncs in collab/plans/share);
+    // otherwise keep a local data URL.
+    if (await canUploadImage()) {
+      try {
+        const url = await uploadPlanImage(file)
+        setCustomImage(url, file.name)
+        onClose()
+      } catch {
+        useLocal()
+      }
+    } else {
+      useLocal()
+    }
   }
 
   return (

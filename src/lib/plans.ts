@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
 import type { BoardSnapshot } from '../types'
 
@@ -60,4 +61,20 @@ export async function deletePlan(id: string): Promise<void> {
 export async function duplicatePlan(id: string): Promise<string> {
   const { title, data } = await getPlan(id)
   return createPlan(`${title} (copy)`, data)
+}
+
+// --- short share links (public, anyone can create/read by id) ---
+
+export async function createShare(data: BoardSnapshot): Promise<string> {
+  const id = nanoid(10)
+  const { error } = await client().from('shares').insert({ id, data })
+  if (error) throw error
+  return id
+}
+
+export async function getShare(id: string): Promise<BoardSnapshot | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase.from('shares').select('data').eq('id', id).single()
+  if (error) return null
+  return data.data as BoardSnapshot
 }

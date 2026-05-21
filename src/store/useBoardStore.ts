@@ -664,7 +664,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         squads: snap.squads,
         vehicles: snap.vehicles ?? [],
         playerPool: snap.playerPool ?? [],
-        // ...but keep local selection/tooling/view/custom image
+        // hosted (URL) custom backgrounds sync; otherwise keep local
+        customImage: snap.customImage ?? null,
+        customImageName: snap.customImageName ?? null,
+        // ...but keep local selection/tooling/view
       }
     }),
 
