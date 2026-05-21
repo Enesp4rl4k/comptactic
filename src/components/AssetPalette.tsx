@@ -14,6 +14,8 @@ export default function AssetPalette() {
   const setActiveSquad = useBoardStore((s) => s.setActiveSquad)
   const placingAssetId = useBoardStore((s) => s.placingAssetId)
   const setPlacingAsset = useBoardStore((s) => s.setPlacingAsset)
+  const placeScale = useBoardStore((s) => s.placeScale)
+  const setPlaceScale = useBoardStore((s) => s.setPlaceScale)
   const [query, setQuery] = useState('')
 
   const q = query.trim().toLowerCase()
@@ -50,6 +52,28 @@ export default function AssetPalette() {
             </button>
           ))}
           {squads.length === 0 && <span className="text-[10px] text-gray-600 px-1">Add a squad from Line-up</span>}
+        </div>
+      </div>
+
+      {/* default size for newly placed icons */}
+      <div className="px-2 py-2 border-b border-edge flex items-center gap-2">
+        <span className="text-[11px] font-semibold text-gray-400">Default size</span>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setPlaceScale(placeScale - 0.1)}
+            className="h-6 w-6 grid place-items-center rounded border border-edge bg-panel2 text-gray-300 hover:bg-edge text-sm"
+            title="Smaller"
+          >
+            −
+          </button>
+          <span className="w-10 text-center text-xs tabular-nums text-gray-200">{placeScale.toFixed(1)}×</span>
+          <button
+            onClick={() => setPlaceScale(placeScale + 0.1)}
+            className="h-6 w-6 grid place-items-center rounded border border-edge bg-panel2 text-gray-300 hover:bg-edge text-sm"
+            title="Larger"
+          >
+            +
+          </button>
         </div>
       </div>
 

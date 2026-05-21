@@ -457,7 +457,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       x: p.x,
       y: p.y,
       assetId,
-      scale: 1,
+      scale: st.placeScale,
       team: st.team,
       color: iconColor,
       rotation: 0,

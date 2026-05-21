@@ -117,6 +117,8 @@ interface BoardState {
   team: Team
   color: string
   strokeWidth: number
+  /** Default scale applied to newly placed icon markers. */
+  placeScale: number
   /** Customizable drawing color palette (user preference). */
   palette: string[]
   // slides (multiple tactics on the same layer); `elements` is the active slide buffer
@@ -162,6 +164,7 @@ interface BoardState {
   setTeam: (team: Team) => void
   setColor: (color: string) => void
   setStrokeWidth: (w: number) => void
+  setPlaceScale: (s: number) => void
   addPaletteColor: (color: string) => void
   removePaletteColor: (color: string) => void
 
@@ -240,6 +243,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   team: 'blufor',
   color: TEAM_COLORS.blufor,
   strokeWidth: 4,
+  placeScale: 1,
   palette: loadPalette(),
   slides: [{ id: 'slide1', name: '1', elements: {} }],
   activeSlideId: 'slide1',
@@ -316,6 +320,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   setTeam: (team) => set({ team, color: TEAM_COLORS[team] }),
   setColor: (color) => set({ color }),
   setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
+  setPlaceScale: (s) => set({ placeScale: Math.min(3, Math.max(0.4, Math.round(s * 10) / 10)) }),
 
   addPaletteColor: (color) =>
     set((s) => {
