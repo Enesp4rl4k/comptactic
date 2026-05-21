@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { ASSETS, CATEGORY_LABELS, iconUrl, type AssetCategory } from '../data/assets'
+import { ASSETS, CATEGORY_LABELS, iconUrl, type AssetCategory, type AssetDef } from '../data/assets'
 import { useBoardStore } from '../store/useBoardStore'
+import { useTintedSvgUrl } from '../lib/useTintedIcon'
+import type { Team } from '../types'
 
 const ORDER: AssetCategory[] = ['infantry', 'deployable', 'vehicle']
 
@@ -28,7 +30,7 @@ export default function AssetPalette() {
             className={`px-2 h-6 rounded text-[10px] border ${
               !activeSquadId ? 'border-white text-white' : 'border-edge text-gray-400'
             }`}
-            style={{ background: !activeSquadId ? color : '#232833' }}
+            style={{ background: !activeSquadId ? color : '#202022' }}
           >
             Team
           </button>
@@ -68,35 +70,9 @@ export default function AssetPalette() {
           <div key={cat} className="px-2 pb-3">
             <div className="text-[11px] font-semibold text-gray-400 px-1 mb-1">{CATEGORY_LABELS[cat]}</div>
             <div className="grid grid-cols-3 gap-1.5">
-              {items.map((a) => {
-                const url = iconUrl(a, team)
-                const badge = activeSquad ? activeSquad.color : a.teamColored ? color : a.fixedColor ?? '#888'
-                return (
-                  <div
-                    key={a.id}
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData('assetId', a.id)}
-                    title={a.name}
-                    className="flex flex-col items-center gap-1 p-1.5 rounded bg-panel2 border border-edge hover:border-blue-500 cursor-grab active:cursor-grabbing"
-                  >
-                    {url ? (
-                      <img src={url} alt={a.name} draggable={false} className="h-9 w-9 object-contain pointer-events-none" />
-                    ) : (
-                      <div
-                        className="h-8 w-8 grid place-items-center text-lg border border-black/50"
-                        style={{
-                          background: badge,
-                          borderRadius: a.shape === 'square' ? 6 : a.shape === 'diamond' ? 4 : 999,
-                          transform: a.shape === 'diamond' ? 'rotate(45deg)' : undefined,
-                        }}
-                      >
-                        <span style={{ transform: a.shape === 'diamond' ? 'rotate(-45deg)' : undefined }}>{a.glyph}</span>
-                      </div>
-                    )}
-                    <span className="text-[9px] text-gray-400 text-center leading-tight">{a.name}</span>
-                  </div>
-                )
-              })}
+              {items.map((a) => (
+                <PaletteAsset key={a.id} a={a} team={team} color={color} squadColor={activeSquad?.color ?? null} />
+              ))}
             </div>
           </div>
           )
@@ -113,6 +89,50 @@ export default function AssetPalette() {
           <span style={{ color }}>{team.toUpperCase()} team</span>
         )}
       </div>
+    </div>
+  )
+}
+
+// A draggable palette entry. When a squad is active, its icon previews in that
+// squad's color (matching how it will render on the board).
+function PaletteAsset({
+  a,
+  team,
+  color,
+  squadColor,
+}: {
+  a: AssetDef
+  team: Team
+  color: string
+  squadColor: string | null
+}) {
+  const tinted = useTintedSvgUrl(a.icon && squadColor ? `/icons/blue/${a.icon}.svg` : null, squadColor || '#ffffff')
+  const variant = iconUrl(a, team)
+  const src = squadColor ? tinted ?? variant : variant
+  const badge = squadColor ?? (a.teamColored ? color : a.fixedColor ?? '#888')
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => e.dataTransfer.setData('assetId', a.id)}
+      title={a.name}
+      className="flex flex-col items-center gap-1 p-1.5 rounded bg-panel2 border border-edge hover:border-accent cursor-grab active:cursor-grabbing transition-colors"
+    >
+      {src ? (
+        <img src={src} alt={a.name} draggable={false} className="h-9 w-9 object-contain pointer-events-none" />
+      ) : (
+        <div
+          className="h-8 w-8 grid place-items-center text-lg border border-black/50"
+          style={{
+            background: badge,
+            borderRadius: a.shape === 'square' ? 6 : a.shape === 'diamond' ? 4 : 999,
+            transform: a.shape === 'diamond' ? 'rotate(45deg)' : undefined,
+          }}
+        >
+          <span style={{ transform: a.shape === 'diamond' ? 'rotate(-45deg)' : undefined }}>{a.glyph}</span>
+        </div>
+      )}
+      <span className="text-[9px] text-gray-400 text-center leading-tight">{a.name}</span>
     </div>
   )
 }

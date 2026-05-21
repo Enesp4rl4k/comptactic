@@ -53,3 +53,25 @@ export function useTintedIcon(url: string | null, color: string): HTMLImageEleme
 
   return img
 }
+
+/** Returns a recolored SVG as a data-URL string (usable as an <img> src). */
+export function useTintedSvgUrl(url: string | null, color: string): string | null {
+  const [src, setSrc] = useState<string | null>(null)
+  useEffect(() => {
+    if (!url) {
+      setSrc(null)
+      return
+    }
+    let active = true
+    loadSvgText(url).then((text) => {
+      if (!active) return
+      let tinted = text
+      for (const re of BODY_COLORS) tinted = tinted.replace(re, color)
+      setSrc('data:image/svg+xml;utf8,' + encodeURIComponent(tinted))
+    })
+    return () => {
+      active = false
+    }
+  }, [url, color])
+  return src
+}

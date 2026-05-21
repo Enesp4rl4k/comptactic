@@ -13,8 +13,6 @@ const TOOLS: { id: ToolId; label: string; glyph: string }[] = [
   { id: 'measure', label: 'Measure (m)', glyph: '📏' },
 ]
 
-const COLORS = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316', '#ffffff', '#0b0e13']
-
 const TEAMS: { id: Team; label: string; color: string }[] = [
   { id: 'blufor', label: 'BLUFOR', color: '#3b82f6' },
   { id: 'opfor', label: 'OPFOR', color: '#ef4444' },
@@ -22,8 +20,10 @@ const TEAMS: { id: Team; label: string; color: string }[] = [
 ]
 
 export default function Toolbar() {
-  const { tool, setTool, team, setTeam, color, setColor, strokeWidth, setStrokeWidth, undo, redo, clearBoard } =
-    useBoardStore()
+  const {
+    tool, setTool, team, setTeam, color, setColor, strokeWidth, setStrokeWidth,
+    palette, addPaletteColor, removePaletteColor, undo, redo, clearBoard,
+  } = useBoardStore()
 
   return (
     <div className="flex items-center gap-3 px-3 py-1.5 bg-panel border-b border-edge">
@@ -67,17 +67,41 @@ export default function Toolbar() {
       <Divider />
 
       <div className="flex items-center gap-1.5">
-        {COLORS.map((c) => (
+        {palette.map((c) => (
           <button
             key={c}
             onClick={() => setColor(c)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              removePaletteColor(c)
+            }}
             className={`h-6 w-6 rounded-full border-2 transition-transform cursor-pointer hover:scale-110 ${
               color === c ? 'border-white ring-2 ring-white/20' : 'border-black/40'
             }`}
             style={{ background: c }}
-            title={c}
+            title={`${c} — click to use, right-click to remove`}
           />
         ))}
+        {/* custom color picker + add to palette */}
+        <label
+          className="relative h-6 w-6 rounded-full border-2 border-dashed border-gray-500 grid place-items-center text-gray-400 text-xs cursor-pointer hover:border-white hover:text-white"
+          title="Pick a custom color"
+        >
+          +
+          <input
+            type="color"
+            value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'}
+            onChange={(e) => setColor(e.target.value)}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+          />
+        </label>
+        <button
+          onClick={() => addPaletteColor(color)}
+          title="Save current color to palette"
+          className="h-6 px-1.5 rounded border border-edge text-[11px] text-gray-300 hover:bg-edge hover:text-white cursor-pointer"
+        >
+          Save
+        </button>
       </div>
 
       <Divider />

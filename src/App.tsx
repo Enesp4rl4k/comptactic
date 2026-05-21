@@ -7,6 +7,7 @@ import TacticalBoard from './components/TacticalBoard'
 import SlidesBar from './components/SlidesBar'
 import LineupGrid from './components/LineupGrid'
 import LayerInfoPanel from './components/LayerInfoPanel'
+import PlayerPool from './components/PlayerPool'
 import TacticSheet from './components/TacticSheet'
 import AuthModal from './components/AuthModal'
 import PlansModal from './components/PlansModal'
@@ -55,7 +56,7 @@ export default function App() {
     const id = setTimeout(() => saveLocal(store.toSnapshot()), 600)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.elements, store.slides, store.activeSlideId, store.squads, store.vehicles, store.mapId, store.layerId, store.customImage])
+  }, [store.elements, store.slides, store.activeSlideId, store.boards, store.activeKey, store.squads, store.vehicles, store.playerPool, store.mapId, store.layerId, store.customImage])
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -140,6 +141,7 @@ export default function App() {
       {view === 'lineup' && (
         <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
           <LayerInfoPanel />
+          <PlayerPool />
           <LineupGrid />
         </div>
       )}
@@ -169,7 +171,7 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-sm px-4 py-2 rounded shadow-lg z-50">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-panel2 border border-edge text-white text-sm px-4 py-2 rounded shadow-lg z-50">
           {toast}
         </div>
       )}

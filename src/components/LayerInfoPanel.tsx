@@ -1,14 +1,16 @@
+import { useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
 import { MAP_BY_ID } from '../data/maps'
 import { ASSET_BY_ID, iconUrl } from '../data/assets'
 import { useLayerInfo, assetIdForIcon, timingLabel, type LayerTeam } from '../lib/useLayerInfo'
 
 // Real per-layer faction setup + vehicle inventory (with spawn/respawn timings).
-// Each vehicle can be pushed into the assignments with its timing prefilled.
+// Collapsible so it doesn't dominate the line-up / tactic sheet.
 export default function LayerInfoPanel({ readOnly = false }: { readOnly?: boolean }) {
   const mapId = useBoardStore((s) => s.mapId)
   const layerId = useBoardStore((s) => s.layerId)
   const info = useLayerInfo(layerId)
+  const [open, setOpen] = useState(false)
 
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
@@ -16,21 +18,26 @@ export default function LayerInfoPanel({ readOnly = false }: { readOnly?: boolea
   if (!layer) return null
 
   return (
-    <div className="border-b border-edge bg-panel">
-      <div className="panel-header">
+    <div className="border-b border-edge bg-panel shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="panel-header w-full text-left cursor-pointer hover:text-gray-300"
+      >
+        <span className="text-gray-400">{open ? '▾' : '▸'}</span>
         <span>Layer Setup</span>
         <span className="normal-case tracking-normal text-gray-500 font-normal">· {layer.name}</span>
         <span className="normal-case tracking-normal text-gray-600 font-normal">· {(map!.sizeMeters / 1000).toFixed(1)} km</span>
-      </div>
+      </button>
 
-      {!info ? (
-        <div className="px-3 py-3 text-[11px] text-gray-600">No detailed data for this layer.</div>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 p-2">
-          <TeamColumn team={info.t1} side="blufor" readOnly={readOnly} />
-          <TeamColumn team={info.t2} side="opfor" readOnly={readOnly} />
-        </div>
-      )}
+      {open &&
+        (!info ? (
+          <div className="px-3 py-3 text-[11px] text-gray-600">No detailed data for this layer.</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 p-2">
+            <TeamColumn team={info.t1} side="blufor" readOnly={readOnly} />
+            <TeamColumn team={info.t2} side="opfor" readOnly={readOnly} />
+          </div>
+        ))}
     </div>
   )
 }
@@ -80,7 +87,7 @@ function TeamColumn({
                 <button
                   onClick={() => addVehiclePreset(assetIdForIcon(v.i), v.q > 1 ? `${v.q}× ${v.n}` : v.n, timing)}
                   title="Add to assignments with timing"
-                  className="shrink-0 h-5 w-5 grid place-items-center rounded bg-blue-600 hover:bg-blue-500 text-white text-xs leading-none"
+                  className="shrink-0 h-5 w-5 grid place-items-center rounded bg-accent hover:brightness-125 text-white text-xs leading-none cursor-pointer"
                 >
                   +
                 </button>

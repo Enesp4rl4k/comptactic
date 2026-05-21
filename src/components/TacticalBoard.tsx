@@ -202,7 +202,6 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     const sq = st.squads.find((s) => s.id === st.activeSquadId) ?? null
     return {
       color: sq ? sq.color : st.color,
-      label: sq ? `S${st.squads.indexOf(sq) + 1}` : undefined,
       rosterSquadId: sq?.id,
     }
   }
@@ -212,8 +211,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       setPoly(null)
       return
     }
-    const { color: c, label, rosterSquadId } = effDraw()
-    addElement({ type: 'zone', points: pts, team, color: c, rotation: 0, label, rosterSquadId } as Omit<BoardElement, 'id' | 'z'>)
+    const { color: c, rosterSquadId } = effDraw()
+    addElement({ type: 'zone', points: pts, team, color: c, rotation: 0, rosterSquadId } as Omit<BoardElement, 'id' | 'z'>)
     setPoly(null)
   }
 
@@ -236,8 +235,10 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     if (tool === 'text') {
       const p = relPointer()
       const text = window.prompt('Text:')
-      if (text)
-        addElement({ type: 'text', x: p.x, y: p.y, text, fontSize: 22, team, color: effDraw().color, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      if (text) {
+        const eff = effDraw()
+        addElement({ type: 'text', x: p.x, y: p.y, text, fontSize: 22, team, color: eff.color, rotation: 0, rosterSquadId: eff.rosterSquadId } as Omit<BoardElement, 'id' | 'z'>)
+      }
       return
     }
     if (!isDrawingTool) {
@@ -278,8 +279,10 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     const d = draft
     setDraft(null)
     lastPenRef.current = null
-    // measurement keeps its own styling; everything else adopts the squad color
-    const drawColor = d.type === 'measure' ? color : effDraw().color
+    // measurement keeps its own styling; everything else adopts the squad color + link
+    const eff = effDraw()
+    const drawColor = d.type === 'measure' ? color : eff.color
+    const squadId = d.type === 'measure' ? undefined : eff.rosterSquadId
     if (d.type === 'rect') {
       const [x1, y1, x2, y2] = d.points
       if (Math.abs(x2 - x1) < 4 || Math.abs(y2 - y1) < 4) return
@@ -292,20 +295,21 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         team,
         color: drawColor,
         rotation: 0,
+        rosterSquadId: squadId,
       } as Omit<BoardElement, 'id' | 'z'>)
     } else if (d.type === 'circle') {
       const [x1, y1, x2, y2] = d.points
       const r = Math.hypot(x2 - x1, y2 - y1)
       if (r < 4) return
-      addElement({ type: 'circle', x: x1, y: y1, radius: r, team, color: drawColor, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      addElement({ type: 'circle', x: x1, y: y1, radius: r, team, color: drawColor, rotation: 0, rosterSquadId: squadId } as Omit<BoardElement, 'id' | 'z'>)
     } else if (d.type === 'pen') {
       if (d.points.length < 4) return
       const pts = simplifyPoints(d.points, 2)
-      addElement({ type: 'pen', points: pts, strokeWidth, team, color: drawColor, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      addElement({ type: 'pen', points: pts, strokeWidth, team, color: drawColor, rotation: 0, rosterSquadId: squadId } as Omit<BoardElement, 'id' | 'z'>)
     } else {
       const moved = Math.hypot(d.points[2] - d.points[0], d.points[3] - d.points[1])
       if (moved < 4) return
-      addElement({ type: d.type, points: d.points, strokeWidth, team, color: drawColor, rotation: 0 } as Omit<BoardElement, 'id' | 'z'>)
+      addElement({ type: d.type, points: d.points, strokeWidth, team, color: drawColor, rotation: 0, rosterSquadId: squadId } as Omit<BoardElement, 'id' | 'z'>)
     }
   }
 
@@ -325,11 +329,9 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     const activeSquad = st.squads.find((s) => s.id === st.activeSquadId) ?? null
 
     let iconColor: string
-    let label: string | undefined
     let rosterSquadId: string | undefined
     if (activeSquad) {
       iconColor = activeSquad.color
-      label = `S${st.squads.indexOf(activeSquad) + 1}`
       rosterSquadId = activeSquad.id
     } else {
       iconColor = asset?.teamColored ? st.color : asset?.fixedColor ?? st.color
@@ -344,7 +346,6 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       team: st.team,
       color: iconColor,
       rotation: 0,
-      label,
       rosterSquadId,
     } as Omit<BoardElement, 'id' | 'z'>)
   }
@@ -354,7 +355,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full overflow-hidden bg-[#0c0f14]"
+      className="relative h-full w-full overflow-hidden bg-bg"
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
@@ -451,14 +452,13 @@ function ZoomButton({ label, onClick }: { label: string; onClick: () => void }) 
   )
 }
 
-const SELECTION_COLORS = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316', '#ffffff', '#0b0e13']
-
 /** Contextual editor for the single selected element: color + size. */
 function SelectionBar() {
   const selectedIds = useBoardStore((s) => s.selectedIds)
   const elements = useBoardStore((s) => s.elements)
   const updateElement = useBoardStore((s) => s.updateElement)
   const beginHistory = useBoardStore((s) => s.beginHistory)
+  const palette = useBoardStore((s) => s.palette)
   const bringToFront = useBoardStore((s) => s.bringToFront)
   const sendToBack = useBoardStore((s) => s.sendToBack)
   const removeElements = useBoardStore((s) => s.removeElements)
@@ -486,7 +486,7 @@ function SelectionBar() {
     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 bg-panel2/95 border border-edge rounded-lg px-3 py-1.5 shadow-lg backdrop-blur">
       <span className="text-[11px] text-gray-400">Color</span>
       <div className="flex items-center gap-1">
-        {SELECTION_COLORS.map((c) => (
+        {palette.map((c) => (
           <button
             key={c}
             onClick={() => setColor(c)}
@@ -541,7 +541,7 @@ function Slider({
         value={value}
         onPointerDown={onStart}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-28 accent-blue-500"
+        className="w-28 accent-neutral-400"
       />
     </label>
   )
@@ -753,28 +753,19 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
       const shifted = el.points.map((p, i) => (i % 2 === 0 ? p + dx : p + dy))
       change({ points: shifted } as Partial<BoardElement>)
     }
-    const xs = el.points.filter((_, i) => i % 2 === 0)
-    const ys = el.points.filter((_, i) => i % 2 === 1)
-    const cx = xs.reduce((a, b) => a + b, 0) / xs.length
-    const cy = ys.reduce((a, b) => a + b, 0) / ys.length
     return (
-      <>
-        <Line
-          {...common}
-          points={el.points}
-          closed
-          stroke={el.color}
-          strokeWidth={2.5}
-          fill={el.color + '2e'}
-          hitStrokeWidth={12}
-          perfectDrawEnabled={false}
-          shadowForStrokeEnabled={false}
-          onDragEnd={onDragEnd}
-        />
-        {el.label && (
-          <Text text={el.label} fontSize={15} fontStyle="bold" fill="#fff" stroke="#000" strokeWidth={0.7} align="center" width={80} offsetX={40} x={cx} y={cy - 8} listening={false} />
-        )}
-      </>
+      <Line
+        {...common}
+        points={el.points}
+        closed
+        stroke={el.color}
+        strokeWidth={2.5}
+        fill={el.color + '2e'}
+        hitStrokeWidth={12}
+        perfectDrawEnabled={false}
+        shadowForStrokeEnabled={false}
+        onDragEnd={onDragEnd}
+      />
     )
   }
 
@@ -857,10 +848,7 @@ function IconView({
     const S = 44
     return (
       <Group {...groupProps}>
-        {/* squad-color ring when the marker belongs to a specific squad */}
-        {el.rosterSquadId && <Circle radius={S / 2 + 2} stroke={el.color} strokeWidth={3} shadowColor="#000" shadowBlur={3} shadowOpacity={0.6} />}
         <KonvaImage image={img} width={S} height={S} offsetX={S / 2} offsetY={S / 2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />
-        {el.label && <Text text={el.label} fontSize={13} fontStyle="bold" fill="#fff" stroke="#000" strokeWidth={0.6} align="center" width={140} offsetX={70} y={S / 2} listening={false} />}
       </Group>
     )
   }
@@ -875,7 +863,6 @@ function IconView({
       {shape === 'square' && <Rect width={R * 2} height={R * 2} offsetX={R} offsetY={R} cornerRadius={4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       {shape === 'diamond' && <RegularPolygon sides={4} radius={R + 4} fill={fill} stroke="#0b0e13" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.5} />}
       <Text text={asset?.glyph ?? '?'} fontSize={20} align="center" verticalAlign="middle" width={R * 2} height={R * 2} offsetX={R} offsetY={R} listening={false} />
-      {el.label && <Text text={el.label} fontSize={13} fontStyle="bold" fill="#fff" stroke="#000" strokeWidth={0.6} align="center" width={140} offsetX={70} y={R + 3} listening={false} />}
     </Group>
   )
 }

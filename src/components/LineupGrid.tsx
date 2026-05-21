@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
 import { MAP_BY_ID } from '../data/maps'
 import { ROLES } from '../data/roles'
@@ -9,7 +10,7 @@ const MAX_SLOTS = 9 // Squad holds at most 9 players in-game
 // Excel-style line-up: squads = columns, players = rows.
 // Rows grow dynamically: a new empty row opens as players are added (max 9).
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, removeSquad, setMemberSlot, removeMemberSlot } =
+  const { mapId, layerId, squads, addSquad, updateSquad, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad } =
     useBoardStore()
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
@@ -23,7 +24,7 @@ export default function LineupGrid() {
   )
 
   return (
-    <div className="h-full flex flex-col bg-[#0c0f14]">
+    <div className="h-full flex flex-col bg-bg">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-edge bg-panel">
         <h2 className="font-semibold">Line-up</h2>
         {layer && (
@@ -36,7 +37,7 @@ export default function LineupGrid() {
         </span>
         <button
           onClick={addSquad}
-          className="ml-auto px-3 h-8 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
+          className="ml-auto btn btn-primary"
         >
           + Add Squad
         </button>
@@ -50,7 +51,7 @@ export default function LineupGrid() {
               <p>No squads yet.</p>
               <button
                 onClick={addSquad}
-                className="mt-3 px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm"
+                className="mt-3 btn btn-primary"
               >
                 + Add First Squad
               </button>
@@ -76,12 +77,13 @@ export default function LineupGrid() {
                 onRemove={() => removeSquad(sq.id)}
                 onSlot={(i, p) => setMemberSlot(sq.id, i, p)}
                 onRemoveSlot={(i) => removeMemberSlot(sq.id, i)}
+                onAssign={(name) => assignPlayerToSquad(name, sq.id)}
               />
             ))}
 
             <button
               onClick={addSquad}
-              className="shrink-0 mt-[42px] h-9 px-3 rounded border border-dashed border-edge text-gray-400 hover:border-blue-500 hover:text-blue-400 text-sm"
+              className="shrink-0 mt-[42px] h-9 px-3 rounded border border-dashed border-edge text-gray-400 hover:border-gray-500 hover:text-gray-200 text-sm"
             >
               + Squad
             </button>
@@ -101,6 +103,7 @@ function SquadColumn({
   onRemove,
   onSlot,
   onRemoveSlot,
+  onAssign,
 }: {
   squad: RosterSquad
   rows: number
@@ -108,9 +111,12 @@ function SquadColumn({
   onRemove: () => void
   onSlot: (index: number, patch: Partial<{ name: string; role: string }>) => void
   onRemoveSlot: (index: number) => void
+  onAssign: (name: string) => void
 }) {
   const accent = squad.color
   const count = squad.members.length
+  const [dragOver, setDragOver] = useState(false)
+  const full = count >= MAX_SLOTS
   // Rows for this squad: filled members + (if room) 1 extra row to add another
   const visible = Math.min(MAX_SLOTS, count + (count < MAX_SLOTS ? 1 : 0))
 
@@ -122,7 +128,25 @@ function SquadColumn({
   }
 
   return (
-    <div className="shrink-0 w-56 rounded border border-edge bg-panel overflow-hidden">
+    <div
+      className={`shrink-0 w-56 rounded border bg-panel overflow-hidden transition-colors ${
+        dragOver && !full ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
+      }`}
+      onDragOver={(e) => {
+        if (full) return
+        e.preventDefault()
+        if (!dragOver) setDragOver(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        const name = e.dataTransfer.getData('playerName')
+        if (name) onAssign(name)
+      }}
+    >
       {/* header */}
       <div className="flex items-center gap-1 px-2 h-[42px]" style={{ background: accent + '22', borderBottom: `2px solid ${accent}` }}>
         <span className="h-3 w-3 rounded-full shrink-0" style={{ background: accent }} />
@@ -180,7 +204,7 @@ function SquadColumn({
                   focusNext(i)
                 }
               }}
-              className="bg-panel2 text-xs rounded border border-edge px-1.5 py-1 flex-1 min-w-0 outline-none focus:border-blue-500"
+              className="bg-panel2 text-xs rounded border border-edge px-1.5 py-1 flex-1 min-w-0 outline-none focus:border-accent"
             />
             {!isAddRow && (
               <button

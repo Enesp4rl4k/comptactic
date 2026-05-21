@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type {
+  BoardData,
   BoardElement,
   BoardSnapshot,
   RosterSquad,
@@ -22,6 +23,67 @@ export const SQUAD_COLORS = [
   '#22d3ee', '#fb923c', '#a3e635', '#e879f9', '#f87171',
 ]
 
+// User-customizable drawing palette (persisted as a preference).
+const DEFAULT_PALETTE = ['#3b82f6', '#ef4444', '#eab308', '#22c55e', '#a855f7', '#f97316', '#ffffff', '#0b0e13']
+const PALETTE_KEY = 'comptactic:palette'
+
+function loadPalette(): string[] {
+  try {
+    const raw = localStorage.getItem(PALETTE_KEY)
+    const arr = raw ? (JSON.parse(raw) as unknown) : null
+    if (Array.isArray(arr) && arr.length && arr.every((c) => typeof c === 'string')) return arr as string[]
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_PALETTE
+}
+
+function savePalette(p: string[]) {
+  try {
+    localStorage.setItem(PALETTE_KEY, JSON.stringify(p))
+  } catch {
+    /* ignore */
+  }
+}
+
+// --- per-map/layer board cache helpers ---
+const NONE_KEY = 'none'
+
+function keyFor(layerId: string | null, customImageName: string | null, customImage: string | null): string {
+  if (customImage) return 'custom:' + (customImageName || 'image')
+  if (layerId) return 'layer:' + layerId
+  return NONE_KEY
+}
+
+function freshSlides(): Slide[] {
+  return [{ id: nanoid(6), name: '1', elements: {} }]
+}
+
+/** Stash the current active board, then load (or create) the board for `newKey`. */
+function switchBoard(
+  s: Pick<BoardState, 'slides' | 'activeSlideId' | 'elements' | 'activeKey' | 'boards'>,
+  newKey: string,
+  patch: Partial<BoardState>,
+): Partial<BoardState> {
+  const syncedSlides = s.slides.map((sl) => (sl.id === s.activeSlideId ? { ...sl, elements: s.elements } : sl))
+  const boards = { ...s.boards, [s.activeKey]: { slides: syncedSlides, activeSlideId: s.activeSlideId } }
+  const target = boards[newKey]
+  const slides = target ? target.slides : freshSlides()
+  const activeSlideId = target ? target.activeSlideId : slides[0].id
+  const active = slides.find((sl) => sl.id === activeSlideId) ?? slides[0]
+  return {
+    ...patch,
+    boards,
+    activeKey: newKey,
+    slides,
+    activeSlideId,
+    elements: active.elements,
+    selectedIds: [],
+    past: [],
+    future: [],
+  }
+}
+
 interface BoardState {
   // selection / map
   mapId: string | null
@@ -34,9 +96,14 @@ interface BoardState {
   team: Team
   color: string
   strokeWidth: number
+  /** Customizable drawing color palette (user preference). */
+  palette: string[]
   // slides (multiple tactics on the same layer); `elements` is the active slide buffer
   slides: Slide[]
   activeSlideId: string
+  /** Cached boards keyed by map/layer so switching maps keeps each tactic separate. */
+  boards: Record<string, BoardData>
+  activeKey: string
   // elements (id-keyed -> collaboration ready)
   elements: Record<string, BoardElement>
   selectedIds: string[]
@@ -49,6 +116,8 @@ interface BoardState {
   activeSquadId: string | null
   // vehicle assignments
   vehicles: VehicleAssignment[]
+  // unassigned players pasted from sign-ups
+  playerPool: string[]
 
   // slides
   addSlide: () => void
@@ -65,6 +134,8 @@ interface BoardState {
   setTeam: (team: Team) => void
   setColor: (color: string) => void
   setStrokeWidth: (w: number) => void
+  addPaletteColor: (color: string) => void
+  removePaletteColor: (color: string) => void
 
   addElement: (el: Omit<BoardElement, 'id' | 'z'> & Partial<Pick<BoardElement, 'id'>>) => string
   updateElement: (id: string, patch: Partial<BoardElement>, commit?: boolean) => void
@@ -88,6 +159,13 @@ interface BoardState {
   setMemberSlot: (squadId: string, index: number, patch: Partial<{ name: string; role: string }>) => void
   removeMemberSlot: (squadId: string, index: number) => void
 
+  // player pool (paste sign-ups, then distribute to squads)
+  addToPool: (names: string[]) => void
+  removeFromPool: (name: string) => void
+  clearPool: () => void
+  assignPlayerToSquad: (name: string, squadId: string) => void
+  autoDistribute: () => void
+
   // vehicles
   addVehicle: (assetId: string) => void
   addVehiclePreset: (assetId: string, name: string, timing: string) => void
@@ -100,6 +178,7 @@ interface BoardState {
 }
 
 const HISTORY_LIMIT = 100
+const MAX_MEMBERS = 9
 
 export const teamColor = (team: Team) => TEAM_COLORS[team]
 
@@ -112,8 +191,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   team: 'blufor',
   color: TEAM_COLORS.blufor,
   strokeWidth: 4,
+  palette: loadPalette(),
   slides: [{ id: 'slide1', name: '1', elements: {} }],
   activeSlideId: 'slide1',
+  boards: {},
+  activeKey: NONE_KEY,
   elements: {},
   selectedIds: [],
   past: [],
@@ -121,10 +203,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   squads: [],
   activeSquadId: null,
   vehicles: [],
+  playerPool: [],
 
-  setMap: (mapId, layerId) => set({ mapId, layerId, customImage: null, customImageName: null, selectedIds: [] }),
-  setLayer: (layerId) => set({ layerId }),
-  setCustomImage: (dataUrl, name = null) => set({ customImage: dataUrl, customImageName: name, selectedIds: [] }),
+  setMap: (mapId, layerId) =>
+    set((s) => switchBoard(s, keyFor(layerId, null, null), { mapId, layerId, customImage: null, customImageName: null })),
+  setLayer: (layerId) =>
+    set((s) => switchBoard(s, keyFor(layerId, null, null), { layerId, customImage: null, customImageName: null })),
+  setCustomImage: (dataUrl, name = null) =>
+    set((s) =>
+      dataUrl
+        ? switchBoard(s, keyFor(null, name, dataUrl), { customImage: dataUrl, customImageName: name })
+        : { customImage: null, customImageName: null, selectedIds: [] },
+    ),
 
   addSlide: () =>
     set((s) => {
@@ -172,6 +262,23 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   setTeam: (team) => set({ team, color: TEAM_COLORS[team] }),
   setColor: (color) => set({ color }),
   setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
+
+  addPaletteColor: (color) =>
+    set((s) => {
+      const c = color.toLowerCase()
+      if (s.palette.some((p) => p.toLowerCase() === c)) return s
+      const palette = [...s.palette, color]
+      savePalette(palette)
+      return { palette }
+    }),
+
+  removePaletteColor: (color) =>
+    set((s) => {
+      if (s.palette.length <= 1) return s
+      const palette = s.palette.filter((p) => p !== color)
+      savePalette(palette)
+      return { palette }
+    }),
 
   beginHistory: () => {
     const { elements, past } = get()
@@ -288,6 +395,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         squads: s.squads.map((sq) => (sq.id === id ? { ...sq, color } : sq)),
         elements: recolor(s.elements),
         slides: s.slides.map((sl) => ({ ...sl, elements: recolor(sl.elements) })),
+        boards: Object.fromEntries(
+          Object.entries(s.boards).map(([k, b]) => [
+            k,
+            { ...b, slides: b.slides.map((sl) => ({ ...sl, elements: recolor(sl.elements) })) },
+          ]),
+        ),
       }
     }),
 
@@ -316,6 +429,58 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         sq.id === squadId ? { ...sq, members: sq.members.filter((_, i) => i !== index) } : sq,
       ),
     })),
+
+  addToPool: (names) =>
+    set((s) => {
+      const clean = names.map((n) => n.trim()).filter(Boolean)
+      const merged = [...s.playerPool]
+      for (const n of clean) if (!merged.includes(n)) merged.push(n)
+      return { playerPool: merged }
+    }),
+
+  removeFromPool: (name) =>
+    set((s) => {
+      const pool = [...s.playerPool]
+      const i = pool.indexOf(name)
+      if (i >= 0) pool.splice(i, 1)
+      return { playerPool: pool }
+    }),
+
+  clearPool: () => set({ playerPool: [] }),
+
+  assignPlayerToSquad: (name, squadId) =>
+    set((s) => {
+      const squad = s.squads.find((sq) => sq.id === squadId)
+      if (!squad || squad.members.length >= MAX_MEMBERS) return s
+      const role = squad.members.length === 0 ? 'sl' : 'rifleman'
+      const pool = [...s.playerPool]
+      const i = pool.indexOf(name)
+      if (i >= 0) pool.splice(i, 1)
+      return {
+        squads: s.squads.map((sq) =>
+          sq.id === squadId ? { ...sq, members: [...sq.members, { id: nanoid(5), name, role }] } : sq,
+        ),
+        playerPool: pool,
+      }
+    }),
+
+  autoDistribute: () =>
+    set((s) => {
+      if (!s.squads.length) return s
+      const squads = s.squads.map((sq) => ({ ...sq, members: [...sq.members] }))
+      const remaining: string[] = []
+      for (const name of s.playerPool) {
+        const target = squads
+          .filter((sq) => sq.members.length < MAX_MEMBERS)
+          .sort((a, b) => a.members.length - b.members.length)[0]
+        if (!target) {
+          remaining.push(name)
+          continue
+        }
+        target.members.push({ id: nanoid(5), name, role: target.members.length === 0 ? 'sl' : 'rifleman' })
+      }
+      return { squads, playerPool: remaining }
+    }),
 
   addVehicle: (assetId) =>
     set((s) => ({
@@ -351,23 +516,36 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   loadSnapshot: (snap) =>
     set(() => {
-      const slides: Slide[] =
+      let slides: Slide[] =
         snap.slides && snap.slides.length
           ? snap.slides
           : [{ id: 'slide1', name: '1', elements: snap.elements ?? {} }]
-      const activeSlideId =
+      let activeSlideId =
         snap.activeSlideId && slides.some((s) => s.id === snap.activeSlideId) ? snap.activeSlideId : slides[0].id
-      const active = slides.find((s) => s.id === activeSlideId)!
+      const activeKey =
+        snap.activeKey || keyFor(snap.layerId, snap.customImageName ?? null, snap.customImage ?? null)
+      const boards: Record<string, BoardData> =
+        snap.boards && Object.keys(snap.boards).length ? { ...snap.boards } : {}
+      if (boards[activeKey]) {
+        slides = boards[activeKey].slides
+        activeSlideId = boards[activeKey].activeSlideId
+      } else {
+        boards[activeKey] = { slides, activeSlideId }
+      }
+      const active = slides.find((s) => s.id === activeSlideId) ?? slides[0]
       return {
         mapId: snap.mapId,
         layerId: snap.layerId,
         customImage: snap.customImage ?? null,
         customImageName: snap.customImageName ?? null,
+        boards,
+        activeKey,
         slides,
         activeSlideId,
         elements: active.elements,
         squads: snap.squads,
         vehicles: snap.vehicles ?? [],
+        playerPool: snap.playerPool ?? [],
         selectedIds: [],
         past: [],
         future: [],
@@ -375,8 +553,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }),
 
   toSnapshot: () => {
-    const { mapId, layerId, customImage, customImageName, slides, activeSlideId, elements, squads, vehicles } = get()
+    const { mapId, layerId, customImage, customImageName, boards, activeKey, slides, activeSlideId, elements, squads, vehicles, playerPool } = get()
     const synced = slides.map((sl) => (sl.id === activeSlideId ? { ...sl, elements } : sl))
-    return { version: 1, mapId, layerId, customImage, customImageName, slides: synced, activeSlideId, squads, vehicles }
+    const syncedBoards = { ...boards, [activeKey]: { slides: synced, activeSlideId } }
+    return { version: 1, mapId, layerId, customImage, customImageName, boards: syncedBoards, activeKey, slides: synced, activeSlideId, squads, vehicles, playerPool }
   },
 }))

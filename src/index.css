@@ -10,7 +10,7 @@ body,
 }
 
 body {
-  background: #0b0e14;
+  background: #0c0c0d;
   color: #e6e9ef;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 14px;
@@ -35,17 +35,17 @@ body {
     @apply inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md text-sm font-medium border border-edge bg-panel2 text-gray-300
            transition-colors duration-150 cursor-pointer
            hover:bg-edge hover:text-white
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20
            disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-primary {
-    @apply border-transparent bg-accent text-white hover:bg-blue-500 hover:text-white;
+    @apply border-transparent bg-accent text-white hover:bg-[#6b6b72] hover:text-white;
   }
   .btn-success {
-    @apply border-transparent bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white;
+    @apply border-transparent bg-[#3f3f46] text-white hover:bg-[#4a4a52] hover:text-white;
   }
   .btn-active {
-    @apply border-accent bg-blue-500/15 text-white;
+    @apply border-accent bg-white/10 text-white;
   }
   .btn-icon {
     @apply h-8 w-8 px-0 shrink-0;
@@ -65,13 +65,13 @@ body {
   height: 9px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2b3340;
+  background: #2d2d30;
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4356;
+  background: #3c3c40;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-track {

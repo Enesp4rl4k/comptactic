@@ -128,7 +128,7 @@ function SquadCard({
               value={m.name}
               placeholder="player"
               onChange={(e) => updateMember(m.id, { name: e.target.value })}
-              className="bg-panel text-xs rounded border border-edge px-1.5 py-0.5 flex-1 min-w-0 outline-none focus:border-blue-500"
+              className="bg-panel text-xs rounded border border-edge px-1.5 py-0.5 flex-1 min-w-0 outline-none focus:border-accent"
             />
             <button onClick={() => removeMember(m.id)} className="text-gray-600 hover:text-red-400 text-xs px-1">
               ×
@@ -139,7 +139,7 @@ function SquadCard({
           <button
             onClick={addMember}
             disabled={squad.members.length >= MAX_MEMBERS}
-            className="text-[11px] text-blue-400 hover:text-blue-300 disabled:text-gray-600"
+            className="text-[11px] text-gray-300 hover:text-white disabled:text-gray-600"
           >
             + Player
           </button>

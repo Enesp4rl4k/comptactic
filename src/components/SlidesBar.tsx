@@ -39,8 +39,9 @@ export default function SlidesBar({ readOnly = false }: { readOnly?: boolean }) 
         <input
           value={active?.name ?? ''}
           onChange={(e) => renameSlide(activeSlideId, e.target.value)}
-          className="h-7 w-20 text-center rounded bg-panel2 border border-edge text-sm outline-none focus:border-blue-500"
-          title="Slide name"
+          placeholder="Slide name…"
+          className="h-7 w-40 rounded bg-panel2 border border-edge px-2 text-sm outline-none focus:border-accent placeholder:text-gray-600"
+          title="Rename this slide"
         />
       )}
 
@@ -57,9 +58,9 @@ export default function SlidesBar({ readOnly = false }: { readOnly?: boolean }) 
             key={s.id}
             onClick={() => setActiveSlide(s.id)}
             title={s.name}
-            className={`h-7 min-w-[1.75rem] px-2 rounded text-xs font-medium border shrink-0 ${
+            className={`h-7 max-w-[10rem] truncate px-2 rounded text-xs font-medium border shrink-0 cursor-pointer ${
               s.id === activeSlideId
-                ? 'bg-blue-600 border-blue-400 text-white'
+                ? 'bg-accent border-accent text-white'
                 : 'bg-panel2 border-edge text-gray-300 hover:bg-edge'
             }`}
           >
@@ -91,7 +92,7 @@ function NavBtn({
       title={title}
       className={`h-7 w-7 grid place-items-center rounded border text-sm disabled:opacity-30 disabled:cursor-not-allowed ${
         accent
-          ? 'bg-blue-600 border-blue-400 text-white hover:bg-blue-500'
+          ? 'bg-accent border-accent text-white hover:brightness-125'
           : 'bg-panel2 border-edge text-gray-300 hover:bg-edge'
       }`}
     >

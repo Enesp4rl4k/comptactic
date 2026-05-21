@@ -19,7 +19,7 @@ export default function TacticSheet() {
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
 
   return (
-    <div className="h-full flex flex-col bg-[#0c0f14]">
+    <div className="h-full flex flex-col bg-bg">
       {/* layer banner */}
       <div className="flex items-center gap-3 px-4 py-2 bg-panel border-b border-edge">
         <span className="text-lg">🧩</span>

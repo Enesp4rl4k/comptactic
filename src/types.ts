@@ -33,6 +33,8 @@ interface ElementBase {
   team: Team
   color: string
   rotation: number
+  /** Optional link to a roster squad; lets squad color changes recolor this mark. */
+  rosterSquadId?: string
 }
 
 /** Polyline-based elements store absolute stage coordinates in `points`. */
@@ -178,6 +180,12 @@ export interface Slide {
   elements: Record<string, BoardElement>
 }
 
+/** A per-map/layer board: its own set of slides. */
+export interface BoardData {
+  slides: Slide[]
+  activeSlideId: string
+}
+
 // ---- Persisted board snapshot (Phase 4) ----
 
 export interface BoardSnapshot {
@@ -189,8 +197,13 @@ export interface BoardSnapshot {
   customImageName?: string | null
   slides: Slide[]
   activeSlideId: string
+  /** Cached per-map/layer boards so switching maps keeps each tactic separate. */
+  boards?: Record<string, BoardData>
+  activeKey?: string
   /** @deprecated legacy single-board field — read only for backward compatibility. */
   elements?: Record<string, BoardElement>
   squads: RosterSquad[]
   vehicles: VehicleAssignment[]
+  /** Unassigned players pasted from sign-ups, waiting to be put into squads. */
+  playerPool?: string[]
 }

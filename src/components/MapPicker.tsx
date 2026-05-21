@@ -43,7 +43,7 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
                 key={m.id}
                 onClick={() => setActiveMap(m.id)}
                 className={`block w-full text-left px-3 py-2 text-sm border-b border-edge/50 ${
-                  activeMap === m.id ? 'bg-blue-600/20 text-white' : 'text-gray-300 hover:bg-panel2'
+                  activeMap === m.id ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-panel2'
                 }`}
               >
                 {m.name}
@@ -69,7 +69,7 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{l.name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-blue-600/30 text-blue-200">{l.mode}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-gray-300">{l.mode}</span>
                   </div>
                   <div className="text-xs text-gray-400 mt-1">
                     <span className="text-blufor">{l.factions[0]}</span> vs{' '}

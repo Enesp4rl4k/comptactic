@@ -150,7 +150,7 @@ export default function PlansModal({
                     <li
                       key={p.id}
                       className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
-                        p.id === currentPlanId ? 'border-accent bg-blue-500/10' : 'border-edge bg-panel2'
+                        p.id === currentPlanId ? 'border-accent bg-white/5' : 'border-edge bg-panel2'
                       }`}
                     >
                       <button onClick={() => open(p)} className="flex-1 min-w-0 text-left cursor-pointer">

@@ -139,7 +139,7 @@ function VehicleCard({
           value={v.note ?? ''}
           placeholder="crew / players…"
           onChange={(e) => updateVehicle(v.id, { note: e.target.value })}
-          className="mt-1.5 w-full bg-panel text-[11px] rounded border border-edge px-1.5 py-1 outline-none focus:border-blue-500"
+          className="mt-1.5 w-full bg-panel text-[11px] rounded border border-edge px-1.5 py-1 outline-none focus:border-accent"
         />
       )}
 
