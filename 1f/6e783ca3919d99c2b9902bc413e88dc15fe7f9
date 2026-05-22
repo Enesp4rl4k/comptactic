@@ -1,0 +1,19 @@
+src/components/Toolbar.tsx
+  s_f9303379803485::t_92d189f03c2258 126-127,138-153,155-173,175-179,181-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "1f6e783ca3919d99c2b9902bc413e88dc15fe7f9",
+  "prompts": {},
+  "sessions": {
+    "s_f9303379803485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97b315-d7ef-409f-a519-8cf75a56c9ee",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
