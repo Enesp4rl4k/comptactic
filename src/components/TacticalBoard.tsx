@@ -21,7 +21,7 @@ import { canUploadImage, uploadPlanImage } from '../lib/storage'
 import { simplifyPoints } from '../lib/simplify'
 import { MAP_BY_ID } from '../data/maps'
 import { ASSET_BY_ID } from '../data/assets'
-import type { BoardElement, IconElement, PolyElement } from '../types'
+import type { BoardElement, IconElement, PolyElement, ToolId } from '../types'
 
 export const MAP_SIZE = 1024
 const PEN_MIN_DIST = 3 // stage units between captured freehand points
@@ -187,6 +187,17 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         setDraft(null)
         setPoly(null)
         setTool('select')
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        // single-key tool shortcuts
+        const TOOL_KEYS: Record<string, ToolId> = {
+          v: 'select', a: 'arrow', l: 'line', p: 'pen', r: 'rect',
+          c: 'circle', z: 'zone', t: 'text', m: 'measure', g: 'ping',
+        }
+        const next = TOOL_KEYS[e.key.toLowerCase()]
+        if (next) {
+          e.preventDefault()
+          setTool(next)
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -366,7 +377,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
   }
 
-  const onMouseMove = () => {
+  const onMouseMove = (e?: Konva.KonvaEventObject<MouseEvent>) => {
     if (!readOnly) {
       const now = Date.now()
       if (now - lastCursorRef.current > 45) {
@@ -390,7 +401,17 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       lastPenRef.current = p
       setDraft((d) => (d ? { ...d, points: [...d.points, p.x, p.y] } : d))
     } else {
-      setDraft((d) => (d ? { ...d, points: [d.points[0], d.points[1], p.x, p.y] } : d))
+      // Hold Shift to constrain straight tools to 45° angle increments.
+      let end = { x: p.x, y: p.y }
+      if (e?.evt.shiftKey && (draft.type === 'line' || draft.type === 'arrow' || draft.type === 'measure')) {
+        const x1 = draft.points[0]
+        const y1 = draft.points[1]
+        const dist = Math.hypot(p.x - x1, p.y - y1)
+        const step = Math.PI / 4
+        const ang = Math.round(Math.atan2(p.y - y1, p.x - x1) / step) * step
+        end = { x: x1 + Math.cos(ang) * dist, y: y1 + Math.sin(ang) * dist }
+      }
+      setDraft((d) => (d ? { ...d, points: [d.points[0], d.points[1], end.x, end.y] } : d))
     }
   }
 

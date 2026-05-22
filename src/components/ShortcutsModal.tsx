@@ -22,11 +22,20 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     ],
   },
   {
-    title: 'Tools & tips',
+    title: 'Tools (press the key)',
     items: [
+      ['V', 'Select / Move'],
+      ['A · L · P', 'Arrow · Line · Freehand'],
+      ['R · C · Z', 'Rectangle · Circle · Zone'],
+      ['T · M · G', 'Text · Measure · Ping'],
+    ],
+  },
+  {
+    title: 'Tips',
+    items: [
+      ['Shift + Arrow/Line', 'Constrain to 45° angles'],
       ['Pen', 'Start near a previous stroke end to continue it'],
       ['Zone', 'Click corners, double-click / Enter to close'],
-      ['Ping', 'Click to flash a marker for everyone'],
       ['# Snap', 'Snap drags to the grid'],
       ['Hover FOB', 'Show 150 m / 300 m radius rings'],
       ['Briefing → arrows / Space', 'Next-prev slide / play-pause'],

@@ -2,17 +2,17 @@ import { useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
 import type { ToolId, Team } from '../types'
 
-const TOOLS: { id: ToolId; label: string; glyph: string }[] = [
-  { id: 'select', label: 'Select / Move', glyph: '⭖' },
-  { id: 'arrow', label: 'Arrow', glyph: '↗' },
-  { id: 'line', label: 'Line', glyph: '╱' },
-  { id: 'pen', label: 'Freehand', glyph: '✎' },
-  { id: 'rect', label: 'Rectangle', glyph: '▭' },
-  { id: 'circle', label: 'Circle', glyph: '◯' },
-  { id: 'zone', label: 'Zone (click corners, double-click / Enter to close)', glyph: '⬠' },
-  { id: 'text', label: 'Text', glyph: 'T' },
-  { id: 'measure', label: 'Measure (m)', glyph: '📏' },
-  { id: 'ping', label: 'Ping (click to flash a marker for everyone)', glyph: '◎' },
+const TOOLS: { id: ToolId; label: string; glyph: string; key: string }[] = [
+  { id: 'select', label: 'Select / Move', glyph: '⭖', key: 'V' },
+  { id: 'arrow', label: 'Arrow', glyph: '↗', key: 'A' },
+  { id: 'line', label: 'Line', glyph: '╱', key: 'L' },
+  { id: 'pen', label: 'Freehand', glyph: '✎', key: 'P' },
+  { id: 'rect', label: 'Rectangle', glyph: '▭', key: 'R' },
+  { id: 'circle', label: 'Circle', glyph: '◯', key: 'C' },
+  { id: 'zone', label: 'Zone — click corners, double-click / Enter to close', glyph: '⬠', key: 'Z' },
+  { id: 'text', label: 'Text', glyph: 'T', key: 'T' },
+  { id: 'measure', label: 'Measure distance', glyph: '📏', key: 'M' },
+  { id: 'ping', label: 'Ping — click to flash a marker for everyone', glyph: '◎', key: 'G' },
 ]
 
 const TEAMS: { id: Team; label: string; color: string }[] = [
@@ -31,15 +31,22 @@ export default function Toolbar() {
         {TOOLS.map((t) => (
           <button
             key={t.id}
-            title={t.label}
+            title={`${t.label} (${t.key})`}
             onClick={() => setTool(t.id)}
-            className={`h-9 w-9 rounded-md text-base grid place-items-center border transition-colors cursor-pointer ${
+            className={`relative h-9 w-9 rounded-md text-base grid place-items-center border transition-colors cursor-pointer ${
               tool === t.id
                 ? 'bg-accent border-accent text-white'
                 : 'bg-panel2 border-edge text-gray-400 hover:bg-edge hover:text-white'
             }`}
           >
             {t.glyph}
+            <span
+              className={`absolute bottom-0 right-0.5 text-[8px] leading-none font-semibold ${
+                tool === t.id ? 'text-white/70' : 'text-gray-600'
+              }`}
+            >
+              {t.key}
+            </span>
           </button>
         ))}
       </div>
