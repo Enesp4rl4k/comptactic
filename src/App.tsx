@@ -88,11 +88,13 @@ export default function App() {
       clearTimeout(timer)
       timer = setTimeout(() => {
         const snap = useBoardStore.getState().toSnapshot()
+        // Dedup on the active content only (slides already hold the live elements);
+        // `boards` is a per-layer cache duplicate, so stringifying it too is wasted work.
         const key = JSON.stringify({
           m: snap.mapId,
           l: snap.layerId,
-          b: snap.boards,
           ak: snap.activeKey,
+          sl: snap.slides,
           s: snap.squads,
           v: snap.vehicles,
           p: snap.playerPool,

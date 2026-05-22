@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
 import { MAP_BY_ID } from '../data/maps'
 import { ROLES } from '../data/roles'
@@ -15,10 +15,13 @@ function memberInitials(name: string): string {
 }
 
 // Excel-style line-up: squads = columns, players = rows.
-// Rows grow dynamically: a new empty row opens as players are added (max 9).
+// Granular selectors keep the grid from re-rendering on unrelated board changes;
+// each SquadColumn is memoized so editing one squad doesn't redraw the others.
 export default function LineupGrid() {
-  const { mapId, layerId, squads, addSquad, updateSquad, setSquadColor, removeSquad, setMemberSlot, removeMemberSlot, assignPlayerToSquad, moveMember, reorderSquads, reorderMember } =
-    useBoardStore()
+  const mapId = useBoardStore((s) => s.mapId)
+  const layerId = useBoardStore((s) => s.layerId)
+  const squads = useBoardStore((s) => s.squads)
+  const addSquad = useBoardStore((s) => s.addSquad)
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
 
@@ -42,10 +45,7 @@ export default function LineupGrid() {
         <span className="text-xs text-gray-500">
           · {squads.length} squads · {totalPlayers} players
         </span>
-        <button
-          onClick={addSquad}
-          className="ml-auto btn btn-primary"
-        >
+        <button onClick={addSquad} className="ml-auto btn btn-primary">
           + Add Squad
         </button>
       </div>
@@ -56,10 +56,7 @@ export default function LineupGrid() {
             <div>
               <div className="text-4xl mb-2">📋</div>
               <p>No squads yet.</p>
-              <button
-                onClick={addSquad}
-                className="mt-3 btn btn-primary"
-              >
+              <button onClick={addSquad} className="mt-3 btn btn-primary">
                 + Add First Squad
               </button>
             </div>
@@ -76,20 +73,7 @@ export default function LineupGrid() {
             </div>
 
             {squads.map((sq) => (
-              <SquadColumn
-                key={sq.id}
-                squad={sq}
-                rows={maxRows}
-                onUpdate={(p) => updateSquad(sq.id, p)}
-                onColor={(c) => setSquadColor(sq.id, c)}
-                onRemove={() => removeSquad(sq.id)}
-                onSlot={(i, p) => setMemberSlot(sq.id, i, p)}
-                onRemoveSlot={(i) => removeMemberSlot(sq.id, i)}
-                onAssign={(name) => assignPlayerToSquad(name, sq.id)}
-                onMoveHere={(fromSquadId, memberId) => moveMember(fromSquadId, memberId, sq.id)}
-                onReorder={(fromSquadId) => reorderSquads(fromSquadId, sq.id)}
-                onReorderMember={(fromMemberId, toMemberId) => reorderMember(sq.id, fromMemberId, toMemberId)}
-              />
+              <SquadColumn key={sq.id} squad={sq} rows={maxRows} />
             ))}
 
             <button
@@ -107,41 +91,29 @@ export default function LineupGrid() {
   )
 }
 
-function SquadColumn({
-  squad,
-  rows,
-  onUpdate,
-  onColor,
-  onRemove,
-  onSlot,
-  onRemoveSlot,
-  onAssign,
-  onMoveHere,
-  onReorder,
-  onReorderMember,
-}: {
-  squad: RosterSquad
-  rows: number
-  onUpdate: (patch: Partial<RosterSquad>) => void
-  onColor: (color: string) => void
-  onRemove: () => void
-  onSlot: (index: number, patch: Partial<{ name: string; role: string }>) => void
-  onRemoveSlot: (index: number) => void
-  onAssign: (name: string) => void
-  onMoveHere: (fromSquadId: string, memberId: string) => void
-  onReorder: (fromSquadId: string) => void
-  onReorderMember: (fromMemberId: string, toMemberId: string) => void
-}) {
+// Memoized: re-renders only when this squad's object reference or `rows` changes.
+// Store actions are stable references, so they don't break memoization.
+const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSquad; rows: number }) {
+  const updateSquad = useBoardStore((s) => s.updateSquad)
+  const setSquadColor = useBoardStore((s) => s.setSquadColor)
+  const removeSquad = useBoardStore((s) => s.removeSquad)
+  const setMemberSlot = useBoardStore((s) => s.setMemberSlot)
+  const removeMemberSlot = useBoardStore((s) => s.removeMemberSlot)
+  const assignPlayerToSquad = useBoardStore((s) => s.assignPlayerToSquad)
+  const moveMember = useBoardStore((s) => s.moveMember)
+  const reorderSquads = useBoardStore((s) => s.reorderSquads)
+  const reorderMember = useBoardStore((s) => s.reorderMember)
+
+  const id = squad.id
   const accent = squad.color
   const count = squad.members.length
   const [dragOver, setDragOver] = useState(false)
   const full = count >= MAX_SLOTS
-  // Rows for this squad: filled members + (if room) 1 extra row to add another
   const visible = Math.min(MAX_SLOTS, count + (count < MAX_SLOTS ? 1 : 0))
 
   const focusNext = (index: number) => {
     setTimeout(() => {
-      const next = document.querySelector<HTMLInputElement>(`[data-name="${squad.id}-${index + 1}"]`)
+      const next = document.querySelector<HTMLInputElement>(`[data-name="${id}-${index + 1}"]`)
       next?.focus()
     }, 0)
   }
@@ -155,7 +127,6 @@ function SquadColumn({
         // Browsers lowercase DataTransfer.types, so compare against lowercase keys.
         const t = Array.from(e.dataTransfer.types).map((x) => x.toLowerCase())
         const isSquad = t.includes('squadmove')
-        // accept squad reorder always; accept player/member only if not full
         if (!isSquad && full) return
         if (isSquad || t.includes('playername') || t.includes('membermove')) {
           e.preventDefault()
@@ -168,22 +139,21 @@ function SquadColumn({
       onDrop={(e) => {
         e.preventDefault()
         setDragOver(false)
-        // reorder squads
         const sqMove = e.dataTransfer.getData('squadMove')
         if (sqMove) {
-          if (sqMove !== squad.id) onReorder(sqMove)
+          if (sqMove !== id) reorderSquads(sqMove, id)
           return
         }
         const name = e.dataTransfer.getData('playerName')
         if (name) {
-          onAssign(name)
+          assignPlayerToSquad(name, id)
           return
         }
         const move = e.dataTransfer.getData('memberMove')
         if (move) {
           try {
             const { squadId, memberId } = JSON.parse(move)
-            if (squadId !== squad.id) onMoveHere(squadId, memberId)
+            if (squadId !== id) moveMember(squadId, memberId, id)
           } catch {
             /* ignore */
           }
@@ -195,7 +165,7 @@ function SquadColumn({
         <span
           draggable
           onDragStart={(e) => {
-            e.dataTransfer.setData('squadMove', squad.id)
+            e.dataTransfer.setData('squadMove', id)
             e.dataTransfer.effectAllowed = 'copyMove'
           }}
           title="Drag: reorder squads, or drop onto a vehicle"
@@ -206,26 +176,26 @@ function SquadColumn({
         <input
           type="color"
           value={accent}
-          onChange={(e) => onColor(e.target.value)}
+          onChange={(e) => setSquadColor(id, e.target.value)}
           title="Squad color"
           className="h-4 w-4 shrink-0 rounded cursor-pointer bg-transparent border-0 p-0"
         />
         <input
           value={squad.name}
-          onChange={(e) => onUpdate({ name: e.target.value })}
+          onChange={(e) => updateSquad(id, { name: e.target.value })}
           className="bg-transparent text-sm font-semibold flex-1 min-w-0 outline-none"
         />
         <span className="text-[10px] text-gray-400">{count}/{MAX_SLOTS}</span>
         <select
           value={squad.team}
-          onChange={(e) => onUpdate({ team: e.target.value as Team })}
+          onChange={(e) => updateSquad(id, { team: e.target.value as Team })}
           className="bg-panel2 text-[10px] rounded border border-edge px-1 py-0.5"
         >
           <option value="blufor">BLU</option>
           <option value="opfor">OPF</option>
           <option value="neutral">NEU</option>
         </select>
-        <button onClick={onRemove} className="text-gray-500 hover:text-red-400 px-1" title="Remove squad">
+        <button onClick={() => removeSquad(id)} className="text-gray-500 hover:text-red-400 px-1" title="Remove squad">
           ×
         </button>
       </div>
@@ -233,7 +203,6 @@ function SquadColumn({
       {/* rows */}
       {Array.from({ length: rows }).map((_, i) => {
         if (i >= visible) {
-          // empty spacer cell (keeps rows aligned across squads)
           return <div key={i} className="h-9 border-b border-edge/20" />
         }
         const m = squad.members[i]
@@ -257,11 +226,10 @@ function SquadColumn({
                     if (!move) return
                     try {
                       const { squadId, memberId } = JSON.parse(move)
-                      // same-squad drop = reorder to this row; let cross-squad bubble to the column
-                      if (squadId === squad.id) {
+                      if (squadId === id) {
                         e.stopPropagation()
                         e.preventDefault()
-                        if (memberId !== m.id) onReorderMember(memberId, m.id)
+                        if (memberId !== m.id) reorderMember(id, memberId, m.id)
                       }
                     } catch {
                       /* ignore */
@@ -274,7 +242,7 @@ function SquadColumn({
               <div
                 draggable
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('memberMove', JSON.stringify({ squadId: squad.id, memberId: m.id, name: m.name }))
+                  e.dataTransfer.setData('memberMove', JSON.stringify({ squadId: id, memberId: m.id, name: m.name }))
                   e.dataTransfer.effectAllowed = 'move'
                 }}
                 title="Drag to another squad or back to the pool"
@@ -288,7 +256,7 @@ function SquadColumn({
             )}
             <select
               value={m?.role ?? (isLeader ? 'sl' : 'rifleman')}
-              onChange={(e) => onSlot(i, { role: e.target.value })}
+              onChange={(e) => setMemberSlot(id, i, { role: e.target.value })}
               className="bg-panel2 text-[10px] rounded border border-edge px-1 py-0.5 w-[52px]"
               style={isLeader ? { color: '#fde68a', fontWeight: 600 } : undefined}
             >
@@ -299,10 +267,10 @@ function SquadColumn({
               ))}
             </select>
             <input
-              data-name={`${squad.id}-${i}`}
+              data-name={`${id}-${i}`}
               value={m?.name ?? ''}
               placeholder={isAddRow ? '+ add player' : isLeader ? 'Squad Leader' : `player ${i + 1}`}
-              onChange={(e) => onSlot(i, { name: e.target.value })}
+              onChange={(e) => setMemberSlot(id, i, { name: e.target.value })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -313,7 +281,7 @@ function SquadColumn({
             />
             {!isAddRow && (
               <button
-                onClick={() => onRemoveSlot(i)}
+                onClick={() => removeMemberSlot(id, i)}
                 className="text-gray-600 hover:text-red-400 text-xs px-1"
                 title="Remove player"
               >
@@ -325,4 +293,4 @@ function SquadColumn({
       })}
     </div>
   )
-}
+})
