@@ -14,7 +14,6 @@ import AuthModal from './components/AuthModal'
 import PlansModal from './components/PlansModal'
 import BriefingMode from './components/BriefingMode'
 import TemplatesModal from './components/TemplatesModal'
-import { exportSlidesPDF, exportSlidesPNG } from './lib/exportSlides'
 import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
@@ -230,8 +229,8 @@ export default function App() {
           )}
           <ExportMenu
             onPNG={() => exportPNG()}
-            onPDF={async () => { flash('Exporting PDF…'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
-            onAllPNG={async () => { flash('Exporting PNG…'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
+            onPDF={async () => { flash('Exporting PDF…'); const { exportSlidesPDF } = await import('./lib/exportSlides'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
+            onAllPNG={async () => { flash('Exporting PNG…'); const { exportSlidesPNG } = await import('./lib/exportSlides'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
           />
           <button className="btn btn-success" onClick={onShare} title="Copy a live link — others editing it sync in real time">Share</button>
           {isSupabaseConfigured && (

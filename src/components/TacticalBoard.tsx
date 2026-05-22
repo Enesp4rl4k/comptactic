@@ -159,7 +159,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault()
-        e.shiftKey ? redo() : undo()
+        if (e.shiftKey) redo()
+        else undo()
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault()
         redo()
@@ -200,14 +201,14 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       if (!item) return
       const file = item.getAsFile()
       if (!file) return
-      const useLocal = () => {
+      const loadLocalImage = () => {
         const reader = new FileReader()
         reader.onload = () => setCustomImage(reader.result as string, 'Pasted image')
         reader.readAsDataURL(file)
       }
       canUploadImage().then((ok) => {
-        if (ok) uploadPlanImage(file).then((url) => setCustomImage(url, 'Pasted image')).catch(useLocal)
-        else useLocal()
+        if (ok) uploadPlanImage(file).then((url) => setCustomImage(url, 'Pasted image')).catch(loadLocalImage)
+        else loadLocalImage()
       })
     }
     window.addEventListener('paste', onPaste)

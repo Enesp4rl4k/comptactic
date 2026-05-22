@@ -11,7 +11,7 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const useLocal = () => {
+    const loadLocalImage = () => {
       const reader = new FileReader()
       reader.onload = () => {
         setCustomImage(reader.result as string, file.name)
@@ -27,10 +27,10 @@ export default function MapPicker({ onClose }: { onClose: () => void }) {
         setCustomImage(url, file.name)
         onClose()
       } catch {
-        useLocal()
+        loadLocalImage()
       }
     } else {
-      useLocal()
+      loadLocalImage()
     }
   }
 
