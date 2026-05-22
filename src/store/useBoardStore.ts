@@ -191,6 +191,8 @@ interface BoardState {
   /** Replace the roster (squads + vehicles + player pool) from a saved template. */
   applyRoster: (squads: RosterSquad[], vehicles: VehicleAssignment[], pool: string[]) => void
   moveSelectionBy: (dx: number, dy: number, exceptId: string) => void
+  /** Nudge all selected elements by (dx, dy) — used by arrow-key movement. */
+  nudgeSelection: (dx: number, dy: number) => void
   toggleSnap: () => void
   clearBoard: () => void
 
@@ -512,6 +514,20 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }
       return { elements: next }
     }),
+
+  nudgeSelection: (dx, dy) => {
+    const { selectedIds } = get()
+    if (!selectedIds.length) return
+    get().beginHistory()
+    set((s) => {
+      const next = { ...s.elements }
+      for (const id of selectedIds) {
+        const el = next[id]
+        if (el) next[id] = shiftEl(el, dx, dy)
+      }
+      return { elements: next }
+    })
+  },
 
   toggleSnap: () => set((s) => ({ snapToGrid: !s.snapToGrid })),
 

@@ -103,6 +103,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const copySelection = useBoardStore((s) => s.copySelection)
   const paste = useBoardStore((s) => s.paste)
   const duplicateSelection = useBoardStore((s) => s.duplicateSelection)
+  const nudgeSelection = useBoardStore((s) => s.nudgeSelection)
   const toggleSelection = useBoardStore((s) => s.toggleSelection)
 
   const placingAssetId = useBoardStore((s) => s.placingAssetId)
@@ -182,6 +183,15 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
           e.preventDefault()
           removeElements(selectedIds)
         }
+      } else if (selectedIds.length && e.key.startsWith('Arrow')) {
+        // Nudge selection with arrow keys (Shift = larger step).
+        e.preventDefault()
+        const d = e.shiftKey ? 10 : 1
+        const delta: Record<string, [number, number]> = {
+          ArrowUp: [0, -d], ArrowDown: [0, d], ArrowLeft: [-d, 0], ArrowRight: [d, 0],
+        }
+        const [dx, dy] = delta[e.key]
+        nudgeSelection(dx, dy)
       } else if (e.key === 'Escape') {
         setSelection([])
         setDraft(null)
@@ -202,7 +212,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedIds, undo, redo, removeElements, setSelection, setTool, copySelection, paste, duplicateSelection])
+  }, [selectedIds, undo, redo, removeElements, setSelection, setTool, copySelection, paste, duplicateSelection, nudgeSelection])
 
   // Paste an image (Ctrl+V) to use it as a custom board background.
   useEffect(() => {
@@ -373,7 +383,11 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       lastPenRef.current = p
       setDraft({ type: 'pen', points: [p.x, p.y] })
     } else {
-      setDraft({ type: tool, points: [p.x, p.y, p.x, p.y] })
+      // Snap the start point to the grid when Snap is on (cleaner shapes/lines).
+      const snap = useBoardStore.getState().snapToGrid
+      const sx = snap ? snapVal(p.x) : p.x
+      const sy = snap ? snapVal(p.y) : p.y
+      setDraft({ type: tool, points: [sx, sy, sx, sy] })
     }
   }
 
@@ -401,15 +415,22 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       lastPenRef.current = p
       setDraft((d) => (d ? { ...d, points: [...d.points, p.x, p.y] } : d))
     } else {
-      // Hold Shift to constrain straight tools to 45° angle increments.
+      const x1 = draft.points[0]
+      const y1 = draft.points[1]
+      const shift = e?.evt.shiftKey
       let end = { x: p.x, y: p.y }
-      if (e?.evt.shiftKey && (draft.type === 'line' || draft.type === 'arrow' || draft.type === 'measure')) {
-        const x1 = draft.points[0]
-        const y1 = draft.points[1]
+      if (shift && (draft.type === 'line' || draft.type === 'arrow' || draft.type === 'measure')) {
+        // Constrain straight tools to 45° angle increments.
         const dist = Math.hypot(p.x - x1, p.y - y1)
         const step = Math.PI / 4
         const ang = Math.round(Math.atan2(p.y - y1, p.x - x1) / step) * step
         end = { x: x1 + Math.cos(ang) * dist, y: y1 + Math.sin(ang) * dist }
+      } else if (shift && draft.type === 'rect') {
+        // Constrain rectangle to a square.
+        const s = Math.max(Math.abs(p.x - x1), Math.abs(p.y - y1))
+        end = { x: x1 + Math.sign(p.x - x1) * s, y: y1 + Math.sign(p.y - y1) * s }
+      } else if (useBoardStore.getState().snapToGrid) {
+        end = { x: snapVal(p.x), y: snapVal(p.y) }
       }
       setDraft((d) => (d ? { ...d, points: [d.points[0], d.points[1], end.x, end.y] } : d))
     }
