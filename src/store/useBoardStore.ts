@@ -105,6 +105,13 @@ function switchBoard(
   }
 }
 
+/** A snapshot of the roster for undo/redo (structural changes only). */
+interface RosterSnap {
+  squads: RosterSquad[]
+  vehicles: VehicleAssignment[]
+  playerPool: string[]
+}
+
 interface BoardState {
   // selection / map
   mapId: string | null
@@ -137,6 +144,9 @@ interface BoardState {
   // history
   past: Record<string, BoardElement>[]
   future: Record<string, BoardElement>[]
+  // roster history (separate stack: structural squad/vehicle/pool changes)
+  rosterPast: RosterSnap[]
+  rosterFuture: RosterSnap[]
   // roster (Phase 3)
   squads: RosterSquad[]
   /** When set, newly placed markers/units adopt this squad's color + label. */
@@ -187,6 +197,9 @@ interface BoardState {
   beginHistory: () => void
   undo: () => void
   redo: () => void
+  beginRosterHistory: () => void
+  rosterUndo: () => void
+  rosterRedo: () => void
 
   bringToFront: (id: string) => void
   sendToBack: (id: string) => void
@@ -257,6 +270,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   snapToGrid: false,
   past: [],
   future: [],
+  rosterPast: [],
+  rosterFuture: [],
   squads: [],
   activeSquadId: null,
   vehicles: [],
@@ -346,6 +361,37 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({
       past: [...past.slice(-HISTORY_LIMIT + 1), structuredClone(elements)],
       future: [],
+    })
+  },
+
+  // Separate undo stack for structural roster changes (squads / vehicles / pool).
+  beginRosterHistory: () => {
+    const { squads, vehicles, playerPool, rosterPast } = get()
+    set({
+      rosterPast: [...rosterPast.slice(-HISTORY_LIMIT + 1), structuredClone({ squads, vehicles, playerPool })],
+      rosterFuture: [],
+    })
+  },
+  rosterUndo: () => {
+    const { rosterPast, rosterFuture, squads, vehicles, playerPool } = get()
+    if (!rosterPast.length) return
+    const prev = rosterPast[rosterPast.length - 1]
+    set({
+      ...prev,
+      rosterPast: rosterPast.slice(0, -1),
+      rosterFuture: [structuredClone({ squads, vehicles, playerPool }), ...rosterFuture].slice(0, HISTORY_LIMIT),
+      activeSquadId: null,
+    })
+  },
+  rosterRedo: () => {
+    const { rosterPast, rosterFuture, squads, vehicles, playerPool } = get()
+    if (!rosterFuture.length) return
+    const next = rosterFuture[0]
+    set({
+      ...next,
+      rosterFuture: rosterFuture.slice(1),
+      rosterPast: [...rosterPast, structuredClone({ squads, vehicles, playerPool })].slice(-HISTORY_LIMIT),
+      activeSquadId: null,
     })
   },
 
@@ -449,8 +495,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ elements: next, selectedIds: newIds })
   },
 
-  applyRoster: (squads, vehicles, pool) =>
-    set({ squads: structuredClone(squads), vehicles: structuredClone(vehicles), playerPool: [...pool], activeSquadId: null }),
+  applyRoster: (squads, vehicles, pool) => {
+    get().beginRosterHistory()
+    set({ squads: structuredClone(squads), vehicles: structuredClone(vehicles), playerPool: [...pool], activeSquadId: null })
+  },
 
   /** Shift every selected element (except the one being dragged) by (dx, dy). */
   moveSelectionBy: (dx, dy, exceptId) =>
@@ -546,6 +594,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       color: SQUAD_COLORS[count % SQUAD_COLORS.length],
       members: [],
     }
+    get().beginRosterHistory()
     set((s) => ({ squads: [...s.squads, squad] }))
   },
 
@@ -583,11 +632,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       }
     }),
 
-  removeSquad: (id) =>
+  removeSquad: (id) => {
+    get().beginRosterHistory()
     set((s) => ({
       squads: s.squads.filter((sq) => sq.id !== id),
       activeSquadId: s.activeSquadId === id ? null : s.activeSquadId,
-    })),
+    }))
+  },
 
   setMemberSlot: (squadId, index, patch) =>
     set((s) => ({
@@ -609,7 +660,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       ),
     })),
 
-  moveMember: (fromSquadId, memberId, toSquadId) =>
+  moveMember: (fromSquadId, memberId, toSquadId) => {
+    if (fromSquadId !== toSquadId) get().beginRosterHistory()
     set((s) => {
       if (fromSquadId === toSquadId) return s
       const from = s.squads.find((sq) => sq.id === fromSquadId)
@@ -623,9 +675,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           return sq
         }),
       }
-    }),
+    })
+  },
 
-  memberToPool: (squadId, memberId) =>
+  memberToPool: (squadId, memberId) => {
+    get().beginRosterHistory()
     set((s) => {
       const sq = s.squads.find((x) => x.id === squadId)
       const m = sq?.members.find((mm) => mm.id === memberId)
@@ -636,15 +690,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         squads: s.squads.map((x) => (x.id === squadId ? { ...x, members: x.members.filter((mm) => mm.id !== memberId) } : x)),
         playerPool,
       }
-    }),
+    })
+  },
 
-  addToPool: (names) =>
+  addToPool: (names) => {
+    get().beginRosterHistory()
     set((s) => {
       const clean = names.map((n) => n.trim()).filter(Boolean)
       const merged = [...s.playerPool]
       for (const n of clean) if (!merged.includes(n)) merged.push(n)
       return { playerPool: merged }
-    }),
+    })
+  },
 
   removeFromPool: (name) =>
     set((s) => {
@@ -654,18 +711,30 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       return { playerPool: pool }
     }),
 
-  clearPool: () => set({ playerPool: [] }),
+  clearPool: () => {
+    get().beginRosterHistory()
+    set({ playerPool: [] })
+  },
 
-  reorderSquads: (fromId, toId) => set((s) => ({ squads: reorderById(s.squads, fromId, toId) })),
-  reorderVehicles: (fromId, toId) => set((s) => ({ vehicles: reorderById(s.vehicles, fromId, toId) })),
-  reorderMember: (squadId, fromMemberId, toMemberId) =>
+  reorderSquads: (fromId, toId) => {
+    if (fromId !== toId) get().beginRosterHistory()
+    set((s) => ({ squads: reorderById(s.squads, fromId, toId) }))
+  },
+  reorderVehicles: (fromId, toId) => {
+    if (fromId !== toId) get().beginRosterHistory()
+    set((s) => ({ vehicles: reorderById(s.vehicles, fromId, toId) }))
+  },
+  reorderMember: (squadId, fromMemberId, toMemberId) => {
+    if (fromMemberId !== toMemberId) get().beginRosterHistory()
     set((s) => ({
       squads: s.squads.map((sq) =>
         sq.id === squadId ? { ...sq, members: reorderById(sq.members, fromMemberId, toMemberId) } : sq,
       ),
-    })),
+    }))
+  },
 
-  assignPlayerToSquad: (name, squadId) =>
+  assignPlayerToSquad: (name, squadId) => {
+    get().beginRosterHistory()
     set((s) => {
       const squad = s.squads.find((sq) => sq.id === squadId)
       if (!squad || squad.members.length >= MAX_MEMBERS) return s
@@ -679,12 +748,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         ),
         playerPool: pool,
       }
-    }),
+    })
+  },
 
-  addVehicle: (assetId) =>
+  addVehicle: (assetId) => {
+    get().beginRosterHistory()
     set((s) => ({
       vehicles: [...s.vehicles, { id: nanoid(6), assetId, squadIds: [], note: '' }],
-    })),
+    }))
+  },
 
   addVehiclePreset: (assetId, name, timing) =>
     set((s) => ({
@@ -696,8 +768,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       vehicles: s.vehicles.map((v) => (v.id === id ? { ...v, ...patch } : v)),
     })),
 
-  removeVehicle: (id) =>
-    set((s) => ({ vehicles: s.vehicles.filter((v) => v.id !== id) })),
+  removeVehicle: (id) => {
+    get().beginRosterHistory()
+    set((s) => ({ vehicles: s.vehicles.filter((v) => v.id !== id) }))
+  },
 
   toggleVehicleSquad: (id, squadId) =>
     set((s) => ({

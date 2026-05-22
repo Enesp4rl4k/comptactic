@@ -14,6 +14,7 @@ import AuthModal from './components/AuthModal'
 import PlansModal from './components/PlansModal'
 import BriefingMode from './components/BriefingMode'
 import TemplatesModal from './components/TemplatesModal'
+import ShortcutsModal from './components/ShortcutsModal'
 import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
@@ -36,6 +37,7 @@ export default function App() {
   const [plansOpen, setPlansOpen] = useState(false)
   const [briefingOpen, setBriefingOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   const [currentTitle, setCurrentTitle] = useState('Untitled plan')
   const [toast, setToast] = useState<string | null>(null)
@@ -136,6 +138,20 @@ export default function App() {
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.elements, store.slides, store.activeSlideId, store.boards, store.activeKey, store.squads, store.vehicles, store.playerPool, store.mapId, store.layerId, store.customImage])
+
+  // "?" opens the shortcuts help (ignored while typing in a field)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return
+      if (e.key === '?') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -238,6 +254,7 @@ export default function App() {
           {isSupabaseConfigured && (
             <button className="btn" onClick={() => setPlansOpen(true)}>☁ Plans</button>
           )}
+          <button className="btn" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)">?</button>
           <OnlineBar />
           <div className="mx-1 h-6 w-px bg-edge" />
           {user ? (
@@ -298,6 +315,7 @@ export default function App() {
 
       {briefingOpen && <BriefingMode onClose={() => setBriefingOpen(false)} />}
       {templatesOpen && <TemplatesModal onClose={() => setTemplatesOpen(false)} flash={flash} />}
+      {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
 
       {toast && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-panel2 border border-edge text-white text-sm px-4 py-2 rounded shadow-lg z-50">

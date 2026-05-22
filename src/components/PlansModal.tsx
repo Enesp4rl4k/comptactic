@@ -28,6 +28,7 @@ export default function PlansModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [query, setQuery] = useState('')
 
   const canUse = isSupabaseConfigured && !!user
 
@@ -138,15 +139,28 @@ export default function PlansModal({
           ) : (
             <>
               {error && <div className="mb-2 text-[12px] text-red-400">{error}</div>}
-              {loading ? (
-                <div className="text-sm text-gray-500 py-6 text-center">Loading…</div>
-              ) : plans.length === 0 ? (
-                <div className="text-sm text-gray-500 py-6 text-center">
-                  No saved plans yet. Use “Save plan” to store the current board.
-                </div>
-              ) : (
-                <ul className="space-y-1.5">
-                  {plans.map((p) => (
+              {plans.length > 0 && (
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search plans…"
+                  className="input text-xs mb-2"
+                />
+              )}
+              {(() => {
+                const q = query.trim().toLowerCase()
+                const shown = q ? plans.filter((p) => p.title.toLowerCase().includes(q)) : plans
+                return loading ? (
+                  <div className="text-sm text-gray-500 py-6 text-center">Loading…</div>
+                ) : plans.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-6 text-center">
+                    No saved plans yet. Use “Save plan” to store the current board.
+                  </div>
+                ) : shown.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-6 text-center">No plans match “{query}”.</div>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {shown.map((p) => (
                     <li
                       key={p.id}
                       className={`flex items-center gap-2 rounded-md border px-3 py-2 ${
@@ -161,9 +175,10 @@ export default function PlansModal({
                       <button onClick={() => dup(p)} disabled={busy} title="Duplicate" className="btn btn-icon h-7 w-7 text-xs">⧉</button>
                       <button onClick={() => del(p)} disabled={busy} title="Delete" className="btn btn-icon h-7 w-7 text-xs hover:text-red-400 hover:border-red-500/60">🗑</button>
                     </li>
-                  ))}
-                </ul>
-              )}
+                    ))}
+                  </ul>
+                )
+              })()}
             </>
           )}
         </div>

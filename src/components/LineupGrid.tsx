@@ -22,6 +22,10 @@ export default function LineupGrid() {
   const layerId = useBoardStore((s) => s.layerId)
   const squads = useBoardStore((s) => s.squads)
   const addSquad = useBoardStore((s) => s.addSquad)
+  const rosterUndo = useBoardStore((s) => s.rosterUndo)
+  const rosterRedo = useBoardStore((s) => s.rosterRedo)
+  const canUndo = useBoardStore((s) => s.rosterPast.length > 0)
+  const canRedo = useBoardStore((s) => s.rosterFuture.length > 0)
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
 
@@ -45,9 +49,11 @@ export default function LineupGrid() {
         <span className="text-xs text-gray-500">
           · {squads.length} squads · {totalPlayers} players
         </span>
-        <button onClick={addSquad} className="ml-auto btn btn-primary">
-          + Add Squad
-        </button>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={rosterUndo} disabled={!canUndo} title="Undo roster change" className="btn disabled:opacity-30 disabled:cursor-not-allowed">↶</button>
+          <button onClick={rosterRedo} disabled={!canRedo} title="Redo roster change" className="btn disabled:opacity-30 disabled:cursor-not-allowed">↷</button>
+          <button onClick={addSquad} className="btn btn-primary">+ Add Squad</button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4">
