@@ -274,24 +274,34 @@ body {
     inset: -14%;
   }
   .home-bg-slide {
+    --home-slide-peak: 0.34;
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: blur(22px) saturate(1.25) brightness(0.72) contrast(1.1);
-    transform: scale(1.08);
+    filter: blur(18px) saturate(1.15) brightness(0.55) contrast(1.05);
+    transform: scale(1.06);
     opacity: 0;
     will-change: opacity, transform;
   }
   .home-bg-slide--1 {
-    animation: home-slide-1 21s ease-in-out infinite;
+    animation: home-slide-1 72s ease-in-out infinite;
   }
   .home-bg-slide--2 {
-    animation: home-slide-2 21s ease-in-out infinite;
+    animation: home-slide-2 72s ease-in-out infinite;
   }
   .home-bg-slide--3 {
-    animation: home-slide-3 21s ease-in-out infinite;
+    animation: home-slide-3 72s ease-in-out infinite;
+  }
+  .home-bg-slide--4 {
+    animation: home-slide-4 72s ease-in-out infinite;
+  }
+  .home-bg-slide--5 {
+    animation: home-slide-5 72s ease-in-out infinite;
+  }
+  .home-bg-slide--6 {
+    animation: home-slide-6 72s ease-in-out infinite;
   }
   .home-bg-scrim {
     position: absolute;
@@ -299,12 +309,12 @@ body {
     background:
       linear-gradient(
         165deg,
-        rgba(9, 9, 11, 0.35) 0%,
-        rgba(24, 24, 27, 0.55) 45%,
-        rgba(9, 9, 11, 0.72) 100%
+        rgba(9, 9, 11, 0.62) 0%,
+        rgba(24, 24, 27, 0.78) 45%,
+        rgba(9, 9, 11, 0.88) 100%
       ),
-      radial-gradient(ellipse 65% 42% at 12% 12%, rgba(234, 179, 8, 0.18), transparent 52%),
-      radial-gradient(ellipse 50% 38% at 92% 82%, rgba(220, 38, 38, 0.22), transparent 50%);
+      radial-gradient(ellipse 65% 42% at 12% 12%, rgba(234, 179, 8, 0.12), transparent 52%),
+      radial-gradient(ellipse 50% 38% at 92% 82%, rgba(220, 38, 38, 0.14), transparent 50%);
   }
   .home-bg-vignette {
     position: absolute;
@@ -440,11 +450,14 @@ body {
 
   @media (prefers-reduced-motion: reduce) {
     .home-bg-slide--1 {
-      opacity: 1;
+      opacity: var(--home-slide-peak);
       animation: none;
     }
     .home-bg-slide--2,
-    .home-bg-slide--3 {
+    .home-bg-slide--3,
+    .home-bg-slide--4,
+    .home-bg-slide--5,
+    .home-bg-slide--6 {
       display: none;
     }
   }
@@ -578,49 +591,108 @@ body {
 
 @keyframes home-slide-1 {
   0%,
-  28% {
-    opacity: 1;
-    transform: scale(1.06);
+  1% {
+    opacity: 0;
+    transform: scale(1.05);
   }
-  33%,
+  4%,
+  13% {
+    opacity: var(--home-slide-peak);
+    transform: scale(1.07);
+  }
+  16%,
   100% {
     opacity: 0;
-    transform: scale(1.1);
+    transform: scale(1.09);
   }
 }
 
 @keyframes home-slide-2 {
   0%,
-  28% {
+  13% {
     opacity: 0;
-    transform: scale(1.06);
+    transform: scale(1.05);
+  }
+  16%,
+  29% {
+    opacity: var(--home-slide-peak);
+    transform: scale(1.07);
   }
   33%,
-  61% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-  66%,
   100% {
     opacity: 0;
-    transform: scale(1.1);
+    transform: scale(1.09);
   }
 }
 
 @keyframes home-slide-3 {
   0%,
-  61% {
+  29% {
     opacity: 0;
-    transform: scale(1.06);
+    transform: scale(1.05);
   }
-  66%,
-  94% {
-    opacity: 1;
-    transform: scale(1.08);
+  33%,
+  46% {
+    opacity: var(--home-slide-peak);
+    transform: scale(1.07);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    transform: scale(1.09);
+  }
+}
+
+@keyframes home-slide-4 {
+  0%,
+  46% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  50%,
+  63% {
+    opacity: var(--home-slide-peak);
+    transform: scale(1.07);
+  }
+  67%,
+  100% {
+    opacity: 0;
+    transform: scale(1.09);
+  }
+}
+
+@keyframes home-slide-5 {
+  0%,
+  63% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  67%,
+  80% {
+    opacity: var(--home-slide-peak);
+    transform: scale(1.07);
+  }
+  84%,
+  100% {
+    opacity: 0;
+    transform: scale(1.09);
+  }
+}
+
+@keyframes home-slide-6 {
+  0%,
+  80% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  84%,
+  97% {
+    opacity: var(--home-slide-peak);
+    transform: scale(1.07);
   }
   100% {
     opacity: 0;
-    transform: scale(1.1);
+    transform: scale(1.09);
   }
 }
 

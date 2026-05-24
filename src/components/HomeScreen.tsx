@@ -9,9 +9,12 @@ interface Props {
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`
 
 const BG_SLIDES = [
-  { src: asset('home/squad-bg-hero.jpg'), className: 'home-bg-slide--1' },
-  { src: asset('home/squad-bg-1.jpg'), className: 'home-bg-slide--2' },
-  { src: asset('home/squad-bg-2.jpg'), className: 'home-bg-slide--3' },
+  { src: asset('home/joinsquad-1-wetlands.jpg'), className: 'home-bg-slide--1' },
+  { src: asset('home/joinsquad-2-heli.jpg'), className: 'home-bg-slide--2' },
+  { src: asset('home/joinsquad-3-tank.jpg'), className: 'home-bg-slide--3' },
+  { src: asset('home/joinsquad-4-car.jpg'), className: 'home-bg-slide--4' },
+  { src: asset('home/joinsquad-5-art.jpg'), className: 'home-bg-slide--5' },
+  { src: asset('home/joinsquad-6-strip.jpg'), className: 'home-bg-slide--6' },
 ] as const
 
 const NOTES = ['Live map sync', 'Line-up & vehicles', 'Host sets edit access']
@@ -116,7 +119,7 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
       </main>
 
       <p className="home-attribution" aria-hidden="true">
-        Background: Squad (Steam)
+        Background: Squad · joinsquad.com
       </p>
       <span className="site-credit" aria-hidden="true">
         Z1roNNN
