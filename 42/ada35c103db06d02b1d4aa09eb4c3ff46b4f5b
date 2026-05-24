@@ -1,0 +1,56 @@
+src/components/ThemeMenu.tsx
+  s_ef05d5e0d2aed5::t_3710ddf5e2f813 36
+  s_ef05d5e0d2aed5::t_0d90ea6d41cc94 1-35,37-64
+index.html
+  s_ef05d5e0d2aed5::t_9ac04cb88d3d85 16-23
+src/store/useUiThemeStore.ts
+  s_ef05d5e0d2aed5::t_d3f7a929b654d4 1-24
+src/main.tsx
+  s_ef05d5e0d2aed5::t_5b9fec4775362e 4,7
+src/index.css
+  s_ef05d5e0d2aed5::t_3d24aca40812c0 371-372
+  s_ef05d5e0d2aed5::t_4a54124767f59b 454-455,458-461,463
+  s_ef05d5e0d2aed5::t_6de1cad095fb02 381-382
+  s_ef05d5e0d2aed5::t_3ff297c0e108e5 616,619
+  s_ef05d5e0d2aed5::t_68ae3ad5fa9471 400,403
+  s_ef05d5e0d2aed5::t_6ec1576081982b 443-445
+  s_ef05d5e0d2aed5::t_04ccd8114ddbdd 5-25
+  s_ef05d5e0d2aed5::t_39c6d672bc3a6e 232,241,250
+  s_ef05d5e0d2aed5::t_751d8d846e6f8c 273,275-278
+  s_ef05d5e0d2aed5::t_587955a478470f 416,419,422,426
+  s_ef05d5e0d2aed5::t_5da3457ed2c353 35
+  s_ef05d5e0d2aed5::t_13e4ce7225d46a 47
+  s_ef05d5e0d2aed5::t_80e50321dc6b24 392-393
+  s_ef05d5e0d2aed5::t_986c5182103345 354-359
+  s_ef05d5e0d2aed5::t_94be960f0ccc44 437
+  s_ef05d5e0d2aed5::t_5c0b21f4000a52 462
+  s_ef05d5e0d2aed5::t_7b096f7d07b27e 66-69,72-73
+  s_ef05d5e0d2aed5::t_e2cd07983fa600 471-473
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_9c3bbdc246748c 56-59
+  s_ef05d5e0d2aed5::t_1d1ab83ee3f224 3
+src/App.tsx
+  s_ef05d5e0d2aed5::t_421d5629ba035d 416
+  s_ef05d5e0d2aed5::t_4e315cd2b576b3 684
+  s_ef05d5e0d2aed5::t_a17d72193ea6ef 23
+tailwind.config.js
+  s_ef05d5e0d2aed5::t_7e51657857d26a 17,19-20
+src/lib/uiTheme.ts
+  s_ef05d5e0d2aed5::t_d93b0275a0370e 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "42ada35c103db06d02b1d4aa09eb4c3ff46b4f5b",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
