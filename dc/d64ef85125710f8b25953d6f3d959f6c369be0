@@ -1,0 +1,38 @@
+src/index.css
+  s_ef05d5e0d2aed5::t_aeaacaeec5b175 373-386
+  s_ef05d5e0d2aed5::t_ec19678096d07a 396
+  s_ef05d5e0d2aed5::t_a50fc6c3bc2dd9 282
+  s_ef05d5e0d2aed5::t_8dc5f4fed9cba9 264,267,274,283
+  s_ef05d5e0d2aed5::t_65b06e3877a827 302-304,306-307,313-314
+  s_ef05d5e0d2aed5::t_f3d621f1c20d52 416-417
+  s_ef05d5e0d2aed5::t_9df6ea675b73c4 357,360
+  s_ef05d5e0d2aed5::t_e2a7f31fa59acb 409-413
+  s_ef05d5e0d2aed5::t_9912e813b52160 423-432,435,438
+  s_ef05d5e0d2aed5::t_c51d1cc802724d 323,326-329,331-340,343-346,349-350
+  s_ef05d5e0d2aed5::t_81d70d31fe820b 330,353,359,361
+  s_ef05d5e0d2aed5::t_92cda3d1a04aac 402-403
+  s_ef05d5e0d2aed5::t_745e855a5fe9e9 300-301,305,312
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_11d7945d4b722d 54,59
+  s_ef05d5e0d2aed5::t_2db47d56777acb 9-10,12-14
+  s_ef05d5e0d2aed5::t_9cb58a4a6eec05 72
+  s_ef05d5e0d2aed5::t_6c0426c3ddbdad 55-58,61-62
+index.html
+  s_ef05d5e0d2aed5::t_5a1dcb9ed91986 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "dcd64ef85125710f8b25953d6f3d959f6c369be0",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
