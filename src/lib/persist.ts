@@ -17,6 +17,10 @@ export function loadLocal(): BoardSnapshot | null {
   }
 }
 
+export function clearLocal() {
+  localStorage.removeItem(LS_KEY)
+}
+
 export function downloadJSON(snap: BoardSnapshot) {
   const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

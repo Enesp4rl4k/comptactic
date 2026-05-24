@@ -187,12 +187,23 @@ export interface Slide {
   id: string
   name: string
   elements: Record<string, BoardElement>
+  /** Briefing notes shown under the slide title. */
+  notes?: string
 }
 
 /** A per-map/layer board: its own set of slides. */
 export interface BoardData {
   slides: Slide[]
   activeSlideId: string
+}
+
+// ---- Custom uploaded map metadata ----
+
+export interface CustomMapMeta {
+  /** Real-world width of the map square in metres (for measure tool). */
+  sizeMeters: number
+  naturalWidth: number
+  naturalHeight: number
 }
 
 // ---- Persisted board snapshot (Phase 4) ----
@@ -204,6 +215,7 @@ export interface BoardSnapshot {
   /** Optional user-supplied background image (data URL) used instead of a map layer. */
   customImage?: string | null
   customImageName?: string | null
+  customMapMeta?: CustomMapMeta | null
   slides: Slide[]
   activeSlideId: string
   /** Cached per-map/layer boards so switching maps keeps each tactic separate. */

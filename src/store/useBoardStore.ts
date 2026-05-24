@@ -1,9 +1,12 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
+import { boardFromSnapshot, rosterFromSnapshot } from '../lib/collab'
+import type { CollabBoardPayload, CollabRosterPayload } from '../lib/collab'
 import type {
   BoardData,
   BoardElement,
   BoardSnapshot,
+  CustomMapMeta,
   RosterSquad,
   Slide,
   Team,
@@ -119,6 +122,11 @@ interface BoardState {
   /** User-supplied background image (data URL); overrides the map layer when set. */
   customImage: string | null
   customImageName: string | null
+  customMapMeta: CustomMapMeta | null
+  /** While set, remote board/roster updates for that section are queued. */
+  editingLock: 'board' | 'roster' | null
+  pendingRemoteBoard: CollabBoardPayload | null
+  pendingRemoteRoster: CollabRosterPayload | null
   // tool config
   tool: ToolId
   team: Team
@@ -163,12 +171,16 @@ interface BoardState {
   removeSlide: (id: string) => void
   setActiveSlide: (id: string) => void
   renameSlide: (id: string, name: string) => void
+  setSlideNotes: (id: string, notes: string) => void
   nextSlide: () => void
   prevSlide: () => void
 
   setMap: (mapId: string, layerId: string) => void
   setLayer: (layerId: string) => void
-  setCustomImage: (dataUrl: string | null, name?: string | null) => void
+  setCustomImage: (dataUrl: string | null, name?: string | null, meta?: CustomMapMeta | null) => void
+  clearCustomImage: () => void
+  setCustomMapSizeMeters: (sizeMeters: number) => void
+  setEditingLock: (lock: 'board' | 'roster' | null) => void
   setTool: (tool: ToolId) => void
   setPlacingAsset: (assetId: string | null) => void
   setTeam: (team: Team) => void
@@ -243,7 +255,31 @@ interface BoardState {
 
   loadSnapshot: (snap: BoardSnapshot) => void
   applyRemote: (snap: BoardSnapshot) => void
+  applyRemoteBoard: (board: CollabBoardPayload) => void
+  applyRemoteRoster: (roster: CollabRosterPayload) => void
+  resetToBlank: () => void
   toSnapshot: () => BoardSnapshot
+  toBoardPayload: () => CollabBoardPayload
+  toRosterPayload: () => CollabRosterPayload
+}
+
+function mergeRemoteBoard(s: BoardState, board: CollabBoardPayload): Partial<BoardState> {
+  const slides = board.slides?.length ? board.slides : s.slides
+  const activeSlideId =
+    board.activeSlideId && slides.some((x) => x.id === board.activeSlideId) ? board.activeSlideId : slides[0]?.id ?? s.activeSlideId
+  const active = slides.find((x) => x.id === activeSlideId)
+  return {
+    mapId: board.mapId,
+    layerId: board.layerId,
+    boards: board.boards ?? s.boards,
+    activeKey: board.activeKey ?? s.activeKey,
+    slides,
+    activeSlideId,
+    elements: active ? active.elements : s.elements,
+    customImage: board.customImage ?? null,
+    customImageName: board.customImageName ?? null,
+    customMapMeta: board.customMapMeta ?? null,
+  }
 }
 
 const HISTORY_LIMIT = 100
@@ -256,6 +292,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   layerId: null,
   customImage: null,
   customImageName: null,
+  customMapMeta: null,
+  editingLock: null,
+  pendingRemoteBoard: null,
+  pendingRemoteRoster: null,
   tool: 'select',
   team: 'blufor',
   color: TEAM_COLORS.blufor,
@@ -284,12 +324,58 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set((s) => switchBoard(s, keyFor(layerId, null, null), { mapId, layerId, customImage: null, customImageName: null })),
   setLayer: (layerId) =>
     set((s) => switchBoard(s, keyFor(layerId, null, null), { layerId, customImage: null, customImageName: null })),
-  setCustomImage: (dataUrl, name = null) =>
+  setCustomImage: (dataUrl, name = null, meta = null) =>
     set((s) =>
       dataUrl
-        ? switchBoard(s, keyFor(null, name, dataUrl), { customImage: dataUrl, customImageName: name })
-        : { customImage: null, customImageName: null, selectedIds: [] },
+        ? switchBoard(s, keyFor(null, name, dataUrl), {
+            customImage: dataUrl,
+            customImageName: name,
+            customMapMeta: meta,
+            mapId: null,
+            layerId: null,
+          })
+        : { customImage: null, customImageName: null, customMapMeta: null, selectedIds: [] },
     ),
+
+  clearCustomImage: () => {
+    const { mapId, layerId } = get()
+    if (mapId && layerId) {
+      set((s) =>
+        switchBoard(s, keyFor(layerId, null, null), {
+          customImage: null,
+          customImageName: null,
+          customMapMeta: null,
+          layerId,
+          selectedIds: [],
+        }),
+      )
+      return
+    }
+    set({ customImage: null, customImageName: null, customMapMeta: null, selectedIds: [] })
+  },
+
+  setCustomMapSizeMeters: (sizeMeters) =>
+    set((s) => {
+      if (!s.customMapMeta) return s
+      return { customMapMeta: { ...s.customMapMeta, sizeMeters: Math.max(100, sizeMeters) } }
+    }),
+
+  setEditingLock: (lock) => {
+    set({ editingLock: lock })
+    if (lock !== null) return
+    const { pendingRemoteBoard, pendingRemoteRoster } = get()
+    if (pendingRemoteBoard) {
+      set((s) => ({ ...mergeRemoteBoard(s, pendingRemoteBoard), pendingRemoteBoard: null }))
+    }
+    if (pendingRemoteRoster) {
+      set({
+        squads: pendingRemoteRoster.squads,
+        vehicles: pendingRemoteRoster.vehicles ?? [],
+        playerPool: pendingRemoteRoster.playerPool ?? [],
+        pendingRemoteRoster: null,
+      })
+    }
+  },
 
   addSlide: () =>
     set((s) => {
@@ -321,6 +407,17 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   renameSlide: (id, name) =>
     set((s) => ({ slides: s.slides.map((sl) => (sl.id === id ? { ...sl, name } : sl)) })),
+
+  setSlideNotes: (id, notes) =>
+    set((s) => ({
+      slides: s.slides.map((sl) => (sl.id === id ? { ...sl, notes } : sl)),
+      boards: Object.fromEntries(
+        Object.entries(s.boards).map(([k, b]) => [
+          k,
+          { ...b, slides: b.slides.map((sl) => (sl.id === id ? { ...sl, notes } : sl)) },
+        ]),
+      ),
+    })),
 
   nextSlide: () => {
     const { slides, activeSlideId } = get()
@@ -824,30 +921,60 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       vehicles: s.vehicles.map((v) => (v.id === id ? { ...v, crew: (v.crew ?? []).filter((n) => n !== name) } : v)),
     })),
 
-  applyRemote: (snap) =>
-    set((s) => {
-      const slides = snap.slides && snap.slides.length ? snap.slides : s.slides
-      const activeSlideId =
-        snap.activeSlideId && slides.some((x) => x.id === snap.activeSlideId) ? snap.activeSlideId : slides[0]?.id ?? s.activeSlideId
-      const active = slides.find((x) => x.id === activeSlideId)
-      return {
-        // adopt shared board state...
-        mapId: snap.mapId,
-        layerId: snap.layerId,
-        boards: snap.boards ?? s.boards,
-        activeKey: snap.activeKey ?? s.activeKey,
-        slides,
-        activeSlideId,
-        elements: active ? active.elements : s.elements,
-        squads: snap.squads,
-        vehicles: snap.vehicles ?? [],
-        playerPool: snap.playerPool ?? [],
-        // hosted (URL) custom backgrounds sync; otherwise keep local
-        customImage: snap.customImage ?? null,
-        customImageName: snap.customImageName ?? null,
-        // ...but keep local selection/tooling/view
-      }
-    }),
+  applyRemote: (snap) => {
+    get().applyRemoteBoard(boardFromSnapshot(snap))
+    get().applyRemoteRoster(rosterFromSnapshot(snap))
+  },
+
+  applyRemoteBoard: (board) => {
+    if (get().editingLock === 'board') {
+      set({ pendingRemoteBoard: board })
+      return
+    }
+    set((s) => mergeRemoteBoard(s, board))
+  },
+
+  applyRemoteRoster: (roster) => {
+    if (get().editingLock === 'roster') {
+      set({ pendingRemoteRoster: roster })
+      return
+    }
+    set({
+      squads: roster.squads,
+      vehicles: roster.vehicles ?? [],
+      playerPool: roster.playerPool ?? [],
+    })
+  },
+
+  resetToBlank: () => {
+    const slides = freshSlides()
+    set({
+      mapId: null,
+      layerId: null,
+      customImage: null,
+      customImageName: null,
+      customMapMeta: null,
+      tool: 'select',
+      slides,
+      activeSlideId: slides[0].id,
+      boards: {},
+      activeKey: NONE_KEY,
+      elements: {},
+      selectedIds: [],
+      squads: [],
+      activeSquadId: null,
+      vehicles: [],
+      playerPool: [],
+      placingAssetId: null,
+      past: [],
+      future: [],
+      rosterPast: [],
+      rosterFuture: [],
+      pendingRemoteBoard: null,
+      pendingRemoteRoster: null,
+      editingLock: null,
+    })
+  },
 
   loadSnapshot: (snap) =>
     set(() => {
@@ -873,6 +1000,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         layerId: snap.layerId,
         customImage: snap.customImage ?? null,
         customImageName: snap.customImageName ?? null,
+        customMapMeta: snap.customMapMeta ?? null,
         boards,
         activeKey,
         slides,
@@ -888,9 +1016,40 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }),
 
   toSnapshot: () => {
-    const { mapId, layerId, customImage, customImageName, boards, activeKey, slides, activeSlideId, elements, squads, vehicles, playerPool } = get()
+    const {
+      mapId,
+      layerId,
+      customImage,
+      customImageName,
+      customMapMeta,
+      boards,
+      activeKey,
+      slides,
+      activeSlideId,
+      elements,
+      squads,
+      vehicles,
+      playerPool,
+    } = get()
     const synced = slides.map((sl) => (sl.id === activeSlideId ? { ...sl, elements } : sl))
     const syncedBoards = { ...boards, [activeKey]: { slides: synced, activeSlideId } }
-    return { version: 1, mapId, layerId, customImage, customImageName, boards: syncedBoards, activeKey, slides: synced, activeSlideId, squads, vehicles, playerPool }
+    return {
+      version: 1,
+      mapId,
+      layerId,
+      customImage,
+      customImageName,
+      customMapMeta,
+      boards: syncedBoards,
+      activeKey,
+      slides: synced,
+      activeSlideId,
+      squads,
+      vehicles,
+      playerPool,
+    }
   },
+
+  toBoardPayload: () => boardFromSnapshot(get().toSnapshot()),
+  toRosterPayload: () => rosterFromSnapshot(get().toSnapshot()),
 }))

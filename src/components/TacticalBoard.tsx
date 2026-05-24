@@ -17,7 +17,7 @@ import { useBoardStore } from '../store/useBoardStore'
 import { usePresence } from '../lib/presence'
 import { useImage } from '../lib/useImage'
 import { useTintedIcon } from '../lib/useTintedIcon'
-import { canUploadImage, uploadPlanImage } from '../lib/storage'
+import { importCustomMap, isImageFile } from '../lib/customMap'
 import { simplifyPoints } from '../lib/simplify'
 import { MAP_BY_ID } from '../data/maps'
 import { ASSET_BY_ID } from '../data/assets'
@@ -27,6 +27,19 @@ export const MAP_SIZE = 1024
 const PEN_MIN_DIST = 3 // stage units between captured freehand points
 const GRID_STEP = MAP_SIZE / 32 // snap-to-grid increment
 const snapVal = (v: number) => Math.round(v / GRID_STEP) * GRID_STEP
+
+function resolveMapSizeMeters(mapId: string | null, customMeta: { sizeMeters: number } | null): number | null {
+  if (customMeta) return customMeta.sizeMeters
+  if (!mapId) return null
+  return MAP_BY_ID[mapId]?.sizeMeters ?? null
+}
+
+function formatMeasure(dist: number, sizeMeters: number | null): string {
+  if (!sizeMeters) return `${Math.round(dist)} px`
+  const m = (dist / MAP_SIZE) * sizeMeters
+  if (m >= 1000) return `${(m / 1000).toFixed(1)} km`
+  return `${Math.round(m)} m`
+}
 
 /** Commit a drag of an x/y element: applies snap + moves the rest of the selection. */
 function commitXYDrag(node: Konva.Node, el: { id: string; x: number; y: number }, change: (p: Partial<BoardElement>) => void) {
@@ -108,9 +121,12 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
 
   const placingAssetId = useBoardStore((s) => s.placingAssetId)
   const customImage = useBoardStore((s) => s.customImage)
+  const customMapMeta = useBoardStore((s) => s.customMapMeta)
   const setCustomImage = useBoardStore((s) => s.setCustomImage)
+  const setEditingLock = useBoardStore((s) => s.setEditingLock)
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
+  const mapSizeMeters = resolveMapSizeMeters(mapId, customMapMeta)
   const [bg, bgStatus] = useImage(customImage ?? layer?.image ?? null)
   const hasBg = Boolean(customImage || layer)
 
@@ -151,7 +167,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       y: (size.h - MAP_SIZE * scale) / 2,
       scale,
     })
-  }, [mapId, size.w, size.h])
+  }, [mapId, customImage, size.w, size.h])
 
   // --- keyboard shortcuts ---
   useEffect(() => {
@@ -222,15 +238,12 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       if (!item) return
       const file = item.getAsFile()
       if (!file) return
-      const loadLocalImage = () => {
-        const reader = new FileReader()
-        reader.onload = () => setCustomImage(reader.result as string, 'Pasted image')
-        reader.readAsDataURL(file)
-      }
-      canUploadImage().then((ok) => {
-        if (ok) uploadPlanImage(file).then((url) => setCustomImage(url, 'Pasted image')).catch(loadLocalImage)
-        else loadLocalImage()
-      })
+      e.preventDefault()
+      importCustomMap(file)
+        .then((r) => setCustomImage(r.url, r.name, r.meta))
+        .catch(() => {
+          /* ignore invalid clipboard image */
+        })
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
@@ -339,6 +352,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
     if (e.evt.button !== 0) return // ignore middle button
     if (readOnly) return
+    setEditingLock('board')
     // Ping: flash an expanding ring for everyone (no permanent mark), stays armed.
     if (tool === 'ping') {
       const p = relPointer()
@@ -437,6 +451,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   }
 
   const onMouseUp = () => {
+    setEditingLock(null)
     if (!draft) return
     const d = draft
     setDraft(null)
@@ -518,6 +533,15 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault()
     if (readOnly) return
+    const file = e.dataTransfer.files?.[0]
+    if (file && isImageFile(file)) {
+      importCustomMap(file)
+        .then((r) => setCustomImage(r.url, r.name, r.meta))
+        .catch(() => {
+          /* ignore */
+        })
+      return
+    }
     const assetId = e.dataTransfer.getData('assetId')
     if (!assetId) return
     const stage = stageRef.current
@@ -543,8 +567,14 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
           <div>
             <div className="text-5xl mb-3">🗺️</div>
             <p className="text-lg">Select a map or upload your own image</p>
-            <p className="text-sm text-gray-600">Use “Select Map”, or paste an image (Ctrl+V)</p>
+            <p className="text-sm text-gray-600">Use “Select Map”, drop a PNG, or paste (Ctrl+V)</p>
           </div>
+        </div>
+      )}
+      {hasBg && bgStatus === 'failed' && (
+        <div className="absolute inset-0 grid place-items-center text-center text-gray-400 pointer-events-none z-10">
+          <p className="text-sm">Could not load map image</p>
+          <p className="text-xs text-gray-600 mt-1">Check the URL or upload again</p>
         </div>
       )}
 
@@ -598,7 +628,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
 
         {/* draft layer: only the in-progress shape re-renders here */}
         <Layer listening={false}>
-          {draft && <DraftView draft={draft} color={color} strokeWidth={strokeWidth} mapSize={map?.sizeMeters ?? null} />}
+          {draft && <DraftView draft={draft} color={color} strokeWidth={strokeWidth} mapSizeMeters={mapSizeMeters} />}
           {poly && <ZoneDraft poly={poly} color={effDraw().color} />}
         </Layer>
 
@@ -773,23 +803,23 @@ function DraftView({
   draft,
   color,
   strokeWidth,
-  mapSize,
+  mapSizeMeters,
 }: {
   draft: Draft
   color: string
   strokeWidth: number
-  mapSize: number | null
+  mapSizeMeters: number | null
 }) {
   if (draft.type === 'arrow')
     return <Arrow points={draft.points} stroke={color} fill={color} strokeWidth={strokeWidth} pointerLength={14} pointerWidth={14} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
   if (draft.type === 'measure') {
     const [x1, y1, x2, y2] = draft.points
     const dist = Math.hypot(x2 - x1, y2 - y1)
-    const m = mapSize ? Math.round((dist / MAP_SIZE) * mapSize) : Math.round(dist)
+    const label = formatMeasure(dist, mapSizeMeters)
     return (
       <>
         <Arrow points={draft.points} stroke="#fde68a" fill="#fde68a" strokeWidth={strokeWidth} pointerLength={12} pointerWidth={12} dash={[8, 6]} perfectDrawEnabled={false} shadowForStrokeEnabled={false} />
-        <Text x={(x1 + x2) / 2 + 6} y={(y1 + y2) / 2 - 18} text={`${m} m`} fontSize={14} fontStyle="bold" fill="#fde68a" />
+        <Text x={(x1 + x2) / 2 + 6} y={(y1 + y2) / 2 - 18} text={label} fontSize={14} fontStyle="bold" fill="#fde68a" />
       </>
     )
   }
@@ -983,10 +1013,9 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
 function MeasureLabel({ points }: { points: number[] }) {
   const [x1, y1, x2, y2] = points
   const dist = Math.hypot(x2 - x1, y2 - y1)
-  const { mapId } = useBoardStore.getState()
-  const map = mapId ? MAP_BY_ID[mapId] : null
-  const m = map ? Math.round((dist / MAP_SIZE) * map.sizeMeters) : Math.round(dist)
-  return <Text x={(x1 + x2) / 2 + 6} y={(y1 + y2) / 2 - 18} text={`${m} m`} fontSize={14} fontStyle="bold" fill="#fde68a" listening={false} />
+  const { mapId, customMapMeta } = useBoardStore.getState()
+  const label = formatMeasure(dist, resolveMapSizeMeters(mapId, customMapMeta))
+  return <Text x={(x1 + x2) / 2 + 6} y={(y1 + y2) / 2 - 18} text={label} fontSize={14} fontStyle="bold" fill="#fde68a" listening={false} />
 }
 
 function IconView({

@@ -57,9 +57,14 @@ export default function BriefingMode({ onClose }: { onClose: () => void }) {
         <span className="font-display font-semibold tracking-wide text-accent">
           Comp<span className="text-white">Tactic</span> · Briefing
         </span>
-        <span className="text-sm text-gray-300 truncate">
+        <span className="text-sm text-gray-300 truncate max-w-[40%]">
           {idx + 1}. {active?.name}
         </span>
+        {active?.notes && (
+          <span className="text-sm text-amber-200/90 truncate flex-1 min-w-0" title={active.notes}>
+            {active.notes}
+          </span>
+        )}
         <span className="text-xs text-gray-500">
           {idx + 1} / {slides.length}
         </span>

@@ -1,22 +1,40 @@
 import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
-import type { BoardSnapshot } from '../types'
+import type { BoardSnapshot, CustomMapMeta } from '../types'
 
-// Lightweight realtime collaboration: every client in the same room broadcasts
-// its board snapshot on change; peers apply the newest one (last-write-wins).
-// Transport is BroadcastChannel (same-origin tabs/windows) plus Supabase
-// Realtime broadcast (cross-network) when configured.
-//
-// On join, a client sends a "hello"; existing peers reply with their current
-// snapshot so late joiners immediately see the squads/line-up/board already set.
+// Partitioned realtime sync: board (map, slides, drawings) and roster (squads,
+// vehicles, pool) are broadcast separately so editing one does not overwrite the other.
 
 export const clientId = nanoid(8)
 
+export interface CollabBoardPayload {
+  mapId: string | null
+  layerId: string | null
+  customImage?: string | null
+  customImageName?: string | null
+  customMapMeta?: CustomMapMeta | null
+  slides: BoardSnapshot['slides']
+  activeSlideId: string
+  boards?: BoardSnapshot['boards']
+  activeKey?: string
+}
+
+export interface CollabRosterPayload {
+  squads: BoardSnapshot['squads']
+  vehicles: BoardSnapshot['vehicles']
+  playerPool: string[]
+}
+
+export type CollabMessageType = 'sync-board' | 'sync-roster' | 'sync' | 'hello'
+
 export interface CollabMessage {
-  type?: 'sync' | 'hello'
+  type: CollabMessageType
   sender: string
   version: number
-  snap: BoardSnapshot
+  board?: CollabBoardPayload
+  roster?: CollabRosterPayload
+  /** @deprecated legacy full snapshot */
+  snap?: BoardSnapshot
 }
 
 /** Stable room id from the URL (?room=...); created and pinned to the URL if absent. */
@@ -31,70 +49,137 @@ export function getRoomId(): string {
   return room
 }
 
+/** Start a fresh collaboration room (clears ?s= and hash, sets new ?room=). */
+export function createNewRoom(): string {
+  const room = nanoid(8)
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.hash = ''
+  url.searchParams.set('room', room)
+  history.replaceState(null, '', url.toString())
+  return room
+}
+
 /** Keep a hosted (URL) custom image but drop heavy inline data-URLs before sending. */
-function lighten(snap: BoardSnapshot): BoardSnapshot {
-  const isUrl = !!snap.customImage && /^https?:\/\//.test(snap.customImage)
-  return isUrl ? snap : { ...snap, customImage: null, customImageName: null }
+export function lightenBoard(board: CollabBoardPayload): CollabBoardPayload {
+  const isUrl = !!board.customImage && /^https?:\/\//.test(board.customImage)
+  if (isUrl) return board
+  return { ...board, customImage: null, customImageName: null, customMapMeta: board.customMapMeta ?? null }
+}
+
+export function boardFromSnapshot(snap: BoardSnapshot): CollabBoardPayload {
+  return {
+    mapId: snap.mapId,
+    layerId: snap.layerId,
+    customImage: snap.customImage ?? null,
+    customImageName: snap.customImageName ?? null,
+    customMapMeta: snap.customMapMeta ?? null,
+    slides: snap.slides,
+    activeSlideId: snap.activeSlideId,
+    boards: snap.boards,
+    activeKey: snap.activeKey,
+  }
+}
+
+export function rosterFromSnapshot(snap: BoardSnapshot): CollabRosterPayload {
+  return {
+    squads: snap.squads,
+    vehicles: snap.vehicles ?? [],
+    playerPool: snap.playerPool ?? [],
+  }
 }
 
 export interface CollabHandle {
-  broadcast: (snap: BoardSnapshot) => void
+  broadcastBoard: (board: CollabBoardPayload) => void
+  broadcastRoster: (roster: CollabRosterPayload) => void
   stop: () => void
 }
 
-/**
- * Start collaboration for `roomId`.
- * @param onRemote called with peers' snapshots (apply them locally).
- * @param getSnapshot optional: returns the local snapshot, used to answer a peer's join "hello".
- */
 export function startCollab(
   roomId: string,
-  onRemote: (snap: BoardSnapshot) => void,
-  getSnapshot?: () => BoardSnapshot,
+  onRemoteBoard: (board: CollabBoardPayload) => void,
+  onRemoteRoster: (roster: CollabRosterPayload) => void,
+  getBoard?: () => CollabBoardPayload,
+  getRoster?: () => CollabRosterPayload,
 ): CollabHandle {
-  let lastVersion = 0
+  let lastBoardVersion = 0
+  let lastRosterVersion = 0
 
   const bc = 'BroadcastChannel' in window ? new BroadcastChannel('comptactic:room:' + roomId) : null
   const channel = supabase
     ? supabase.channel('room:' + roomId, { config: { broadcast: { self: false } } })
     : null
 
-  const broadcast = (snap: BoardSnapshot) => {
-    const msg: CollabMessage = { type: 'sync', sender: clientId, version: Date.now(), snap: lighten(snap) }
+  const send = (msg: CollabMessage) => {
     bc?.postMessage(msg)
-    channel?.send({ type: 'broadcast', event: 'sync', payload: msg })
+    channel?.send({ type: 'broadcast', event: 'collab', payload: msg })
   }
 
-  // Someone just joined and asked for the current state — reply with our snapshot.
+  const broadcastBoard = (board: CollabBoardPayload) => {
+    send({
+      type: 'sync-board',
+      sender: clientId,
+      version: Date.now(),
+      board: lightenBoard(board),
+    })
+  }
+
+  const broadcastRoster = (roster: CollabRosterPayload) => {
+    send({ type: 'sync-roster', sender: clientId, version: Date.now(), roster })
+  }
+
   const replyToHello = () => {
-    if (getSnapshot) broadcast(getSnapshot())
+    if (getBoard) broadcastBoard(getBoard())
+    if (getRoster) broadcastRoster(getRoster())
   }
 
-  const applySync = (m: CollabMessage) => {
-    if (!m || m.sender === clientId || m.version <= lastVersion) return
-    lastVersion = m.version
-    onRemote(m.snap)
-  }
+  const applyMessage = (m: CollabMessage) => {
+    if (!m || m.sender === clientId) return
 
-  const sendHello = () => {
-    bc?.postMessage({ type: 'hello', sender: clientId })
-    channel?.send({ type: 'broadcast', event: 'hello', payload: { sender: clientId } })
-  }
+    if (m.type === 'hello') {
+      replyToHello()
+      return
+    }
 
-  if (bc) {
-    bc.onmessage = (e: MessageEvent<CollabMessage & { type?: string }>) => {
-      const m = e.data
-      if (!m) return
-      if (m.type === 'hello') {
-        if (m.sender !== clientId) replyToHello()
-        return
+    // Legacy: full snapshot overwrites both sections.
+    if (m.type === 'sync' && m.snap) {
+      if (m.version > lastBoardVersion) {
+        lastBoardVersion = m.version
+        onRemoteBoard(boardFromSnapshot(m.snap))
       }
-      applySync(m)
+      if (m.version > lastRosterVersion) {
+        lastRosterVersion = m.version
+        onRemoteRoster(rosterFromSnapshot(m.snap))
+      }
+      return
+    }
+
+    if (m.type === 'sync-board' && m.board && m.version > lastBoardVersion) {
+      lastBoardVersion = m.version
+      onRemoteBoard(m.board)
+      return
+    }
+
+    if (m.type === 'sync-roster' && m.roster && m.version > lastRosterVersion) {
+      lastRosterVersion = m.version
+      onRemoteRoster(m.roster)
     }
   }
 
+  const sendHello = () => {
+    send({ type: 'hello', sender: clientId, version: 0 })
+  }
+
+  if (bc) {
+    bc.onmessage = (e: MessageEvent<CollabMessage>) => applyMessage(e.data)
+  }
+
   if (channel) {
-    channel.on('broadcast', { event: 'sync' }, ({ payload }: { payload: CollabMessage }) => applySync(payload))
+    channel.on('broadcast', { event: 'collab' }, ({ payload }: { payload: CollabMessage }) => applyMessage(payload))
+    // Legacy event name from older clients
+    channel.on('broadcast', { event: 'sync' }, ({ payload }: { payload: CollabMessage }) => {
+      applyMessage({ ...payload, type: payload.type ?? 'sync' })
+    })
     channel.on('broadcast', { event: 'hello' }, ({ payload }: { payload: { sender: string } }) => {
       if (payload?.sender !== clientId) replyToHello()
     })
@@ -103,13 +188,12 @@ export function startCollab(
     })
   }
 
-  // Same-origin tabs are ready immediately; ask them for the current state too.
-  bc?.postMessage({ type: 'hello', sender: clientId })
+  bc?.postMessage({ type: 'hello', sender: clientId, version: 0 })
 
   const stop = () => {
     bc?.close()
     if (channel && supabase) supabase.removeChannel(channel)
   }
 
-  return { broadcast, stop }
+  return { broadcastBoard, broadcastRoster, stop }
 }

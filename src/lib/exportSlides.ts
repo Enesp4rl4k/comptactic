@@ -37,6 +37,7 @@ function imageSize(uri: string): Promise<{ w: number; h: number }> {
 
 interface Shot {
   name: string
+  notes?: string
   uri: string
   w: number
   h: number
@@ -54,7 +55,7 @@ async function captureAllSlides(): Promise<Shot[]> {
     const uri = captureStageURI()
     if (uri) {
       const { w, h } = await imageSize(uri)
-      shots.push({ name: sl.name, uri, w, h })
+      shots.push({ name: sl.name, notes: sl.notes, uri, w, h })
     }
   }
   st.setActiveSlide(original)
@@ -70,12 +71,18 @@ export async function exportSlidesPDF(): Promise<boolean> {
   const pw = pdf.internal.pageSize.getWidth()
   const ph = pdf.internal.pageSize.getHeight()
   const margin = 24
-  const headerH = 22
   shots.forEach((s, i) => {
     if (i > 0) pdf.addPage()
+    const headerH = s.notes?.trim() ? 40 : 22
     pdf.setFontSize(13)
     pdf.setTextColor(20)
     pdf.text(`${i + 1}. ${s.name}`, margin, margin)
+    if (s.notes?.trim()) {
+      pdf.setFontSize(10)
+      pdf.setTextColor(80)
+      const lines = pdf.splitTextToSize(s.notes.trim(), pw - margin * 2)
+      pdf.text(lines, margin, margin + 16)
+    }
     const availW = pw - margin * 2
     const availH = ph - margin * 2 - headerH
     const scale = Math.min(availW / s.w, availH / s.h)

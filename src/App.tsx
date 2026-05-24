@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Toolbar from './components/Toolbar'
 import AssetPalette from './components/AssetPalette'
 import RosterPanel from './components/RosterPanel'
@@ -18,7 +18,7 @@ import ShortcutsModal from './components/ShortcutsModal'
 import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
-import { startCollab, getRoomId } from './lib/collab'
+import { startCollab, getRoomId, createNewRoom } from './lib/collab'
 import { usePresence } from './lib/presence'
 import type { BoardSnapshot } from './types'
 import { useBoardStore } from './store/useBoardStore'
@@ -29,6 +29,7 @@ import {
   encodeToHash,
   decodeFromHash,
   exportPNG,
+  clearLocal,
 } from './lib/persist'
 
 export default function App() {
@@ -42,6 +43,8 @@ export default function App() {
   const [currentTitle, setCurrentTitle] = useState('Untitled plan')
   const [toast, setToast] = useState<string | null>(null)
   const [view, setView] = useState<'board' | 'lineup' | 'sheet'>('board')
+  const [roomId, setRoomId] = useState(() => getRoomId())
+  const viewOnly = useMemo(() => new URLSearchParams(window.location.search).get('view') === '1', [])
   const store = useBoardStore()
   const { user } = useAuth()
   const map = store.mapId ? MAP_BY_ID[store.mapId] : null
@@ -70,63 +73,92 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // realtime collaboration: broadcast local board changes, apply peers' changes
+  // realtime collaboration: board and roster sync on separate channels (view-only: receive only)
   useEffect(() => {
     let applyingRemote = false
-    let lastSent = ''
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const room = getRoomId()
+    let lastBoardSent = ''
+    let lastRosterSent = ''
+    let boardTimer: ReturnType<typeof setTimeout> | undefined
+    let rosterTimer: ReturnType<typeof setTimeout> | undefined
     const handle = startCollab(
-      room,
-      (snap) => {
+      roomId,
+      (board) => {
         applyingRemote = true
-        useBoardStore.getState().applyRemote(snap)
+        useBoardStore.getState().applyRemoteBoard(board)
         applyingRemote = false
       },
-      () => useBoardStore.getState().toSnapshot(),
+      (roster) => {
+        applyingRemote = true
+        useBoardStore.getState().applyRemoteRoster(roster)
+        applyingRemote = false
+      },
+      () => useBoardStore.getState().toBoardPayload(),
+      () => useBoardStore.getState().toRosterPayload(),
     )
-    const unsub = useBoardStore.subscribe(() => {
+    const unsub = viewOnly
+      ? () => {}
+      : useBoardStore.subscribe((state, prev) => {
       if (applyingRemote) return
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        const snap = useBoardStore.getState().toSnapshot()
-        // Dedup on the active content only (slides already hold the live elements);
-        // `boards` is a per-layer cache duplicate, so stringifying it too is wasted work.
-        const key = JSON.stringify({
-          m: snap.mapId,
-          l: snap.layerId,
-          ak: snap.activeKey,
-          sl: snap.slides,
-          s: snap.squads,
-          v: snap.vehicles,
-          p: snap.playerPool,
-        })
-        if (key === lastSent) return // skip selection/tool-only changes
-        lastSent = key
-        handle.broadcast(snap)
-      }, 150)
+
+      const boardChanged =
+        state.mapId !== prev.mapId ||
+        state.layerId !== prev.layerId ||
+        state.customImage !== prev.customImage ||
+        state.customImageName !== prev.customImageName ||
+        state.customMapMeta !== prev.customMapMeta ||
+        state.slides !== prev.slides ||
+        state.activeSlideId !== prev.activeSlideId ||
+        state.boards !== prev.boards ||
+        state.activeKey !== prev.activeKey ||
+        state.elements !== prev.elements
+
+      const rosterChanged =
+        state.squads !== prev.squads ||
+        state.vehicles !== prev.vehicles ||
+        state.playerPool !== prev.playerPool
+
+      if (boardChanged) {
+        clearTimeout(boardTimer)
+        boardTimer = setTimeout(() => {
+          const board = useBoardStore.getState().toBoardPayload()
+          const key = JSON.stringify(board)
+          if (key === lastBoardSent) return
+          lastBoardSent = key
+          handle.broadcastBoard(board)
+        }, 150)
+      }
+
+      if (rosterChanged) {
+        clearTimeout(rosterTimer)
+        rosterTimer = setTimeout(() => {
+          const roster = useBoardStore.getState().toRosterPayload()
+          const key = JSON.stringify(roster)
+          if (key === lastRosterSent) return
+          lastRosterSent = key
+          handle.broadcastRoster(roster)
+        }, 150)
+      }
     })
     return () => {
-      clearTimeout(timer)
+      clearTimeout(boardTimer)
+      clearTimeout(rosterTimer)
       unsub()
       handle.stop()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [roomId, viewOnly])
 
   // presence: join the room, default the display name from the signed-in email.
   // The client that created the room (no ?room in the URL) is the host; the flag
   // is persisted per-room so a refresh keeps host rights.
   useEffect(() => {
     const hadRoom = !!new URLSearchParams(window.location.search).get('room')
-    const room = getRoomId()
-    const hostKey = 'ct:host:' + room
+    const hostKey = 'ct:host:' + roomId
     const isHost = hadRoom ? localStorage.getItem(hostKey) === '1' : true
     if (isHost) localStorage.setItem(hostKey, '1')
     usePresence.getState().setHost(isHost)
-    const stop = usePresence.getState().start(room)
+    const stop = usePresence.getState().start(roomId)
     return stop
-  }, [])
+  }, [roomId])
   useEffect(() => {
     const p = usePresence.getState()
     if (!p.name && user?.email) p.setName(user.email.split('@')[0])
@@ -137,7 +169,20 @@ export default function App() {
     const id = setTimeout(() => saveLocal(store.toSnapshot()), 600)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.elements, store.slides, store.activeSlideId, store.boards, store.activeKey, store.squads, store.vehicles, store.playerPool, store.mapId, store.layerId, store.customImage])
+  }, [
+    store.elements,
+    store.slides,
+    store.activeSlideId,
+    store.boards,
+    store.activeKey,
+    store.squads,
+    store.vehicles,
+    store.playerPool,
+    store.mapId,
+    store.layerId,
+    store.customImage,
+    store.customMapMeta,
+  ])
 
   // "?" opens the shortcuts help (ignored while typing in a field)
   useEffect(() => {
@@ -158,6 +203,32 @@ export default function App() {
     setTimeout(() => setToast(null), 2200)
   }
 
+  const snapshotHasWork = (snap: BoardSnapshot) => {
+    if (snap.mapId || snap.customImage) return true
+    if (snap.squads.length || snap.vehicles.length || (snap.playerPool?.length ?? 0)) return true
+    for (const sl of snap.slides ?? []) {
+      if (Object.keys(sl.elements).length) return true
+    }
+    for (const board of Object.values(snap.boards ?? {})) {
+      for (const sl of board.slides) {
+        if (Object.keys(sl.elements).length) return true
+      }
+    }
+    return false
+  }
+
+  const onNewPlan = () => {
+    const snap = store.toSnapshot()
+    if (snapshotHasWork(snap) && !window.confirm('Start a new blank plan? Current work will be cleared.')) return
+    clearLocal()
+    useBoardStore.getState().resetToBlank()
+    setCurrentPlanId(null)
+    setCurrentTitle('Untitled plan')
+    setView('board')
+    setRoomId(createNewRoom())
+    flash('New blank plan')
+  }
+
   const copyLink = async (url: string, msg: string) => {
     try {
       await navigator.clipboard.writeText(url)
@@ -171,21 +242,30 @@ export default function App() {
 
   // Share = open the plan AND join the same live room, so opening the link starts
   // real-time collaboration (edits sync both ways).
-  const onShare = async () => {
-    const room = getRoomId()
+  const buildShareUrl = async (viewOnlyLink: boolean) => {
+    const room = roomId
     const base = `${window.location.origin}${window.location.pathname}`
-    // Prefer a short DB-backed link when Supabase is configured.
+    const viewQ = viewOnlyLink ? '&view=1' : ''
     if (isSupabaseConfigured) {
       try {
         const id = await createShare(store.toSnapshot())
-        await copyLink(`${base}?s=${id}&room=${room}`, 'Live share link copied — edits sync in real time')
-        return
+        return `${base}?s=${id}&room=${room}${viewQ}`
       } catch {
         /* fall back to hash link */
       }
     }
     const b64 = encodeToHash(store.toSnapshot()).split('#plan=')[1] ?? ''
-    await copyLink(`${base}?room=${room}#plan=${b64}`, 'Live share link copied — edits sync in real time')
+    return `${base}?room=${room}${viewQ}#plan=${b64}`
+  }
+
+  const onShareEdit = async () => {
+    const url = await buildShareUrl(false)
+    await copyLink(url, 'Live edit link copied — changes sync in real time')
+  }
+
+  const onShareView = async () => {
+    const url = await buildShareUrl(true)
+    await copyLink(url, 'View-only link copied')
   }
 
   // Save the current plan to the cloud (create or update).
@@ -218,12 +298,29 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col">
+      {viewOnly && (
+        <div className="shrink-0 px-4 py-1.5 text-center text-xs text-amber-200 bg-amber-500/10 border-b border-amber-500/25">
+          View-only mode — you can watch the plan but not edit it
+        </div>
+      )}
       {/* header */}
       <header className="flex items-center gap-3 px-4 h-12 bg-panel border-b border-edge shrink-0">
-        <div className="font-display font-bold text-base tracking-wide text-accent select-none">
+        <button
+          type="button"
+          onClick={viewOnly ? undefined : onNewPlan}
+          disabled={viewOnly}
+          title={viewOnly ? 'CompTactic' : 'New blank plan'}
+          className={`font-display font-bold text-base tracking-wide text-accent select-none ${
+            viewOnly ? 'cursor-default' : 'cursor-pointer hover:opacity-90'
+          }`}
+        >
           Comp<span className="text-white">Tactic</span>
-        </div>
-        <button onClick={() => setPickerOpen(true)} className="btn btn-primary max-w-[200px] truncate">
+        </button>
+        <button
+          onClick={() => setPickerOpen(true)}
+          disabled={viewOnly}
+          className="btn btn-primary max-w-[200px] truncate disabled:opacity-60"
+        >
           {mapLabel}
         </button>
 
@@ -240,17 +337,37 @@ export default function App() {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <button className="btn btn-success" onClick={onSave} title="Save to cloud">Save</button>
-          <button className="btn" onClick={() => setTemplatesOpen(true)} title="Templates &amp; library">Templates</button>
+          {!viewOnly && (
+            <>
+              <button className="btn btn-success" onClick={onSave} title="Save to cloud">
+                Save
+              </button>
+              <button className="btn" onClick={() => setTemplatesOpen(true)} title="Templates &amp; library">
+                Templates
+              </button>
+            </>
+          )}
           {view === 'board' && (
-            <button className="btn" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">▶ Briefing</button>
+            <button className="btn" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">
+              ▶ Briefing
+            </button>
           )}
           <ExportMenu
             onPNG={() => exportPNG()}
-            onPDF={async () => { flash('Exporting PDF…'); const { exportSlidesPDF } = await import('./lib/exportSlides'); const ok = await exportSlidesPDF(); if (!ok) flash('Open the Board with a map first') }}
-            onAllPNG={async () => { flash('Exporting PNG…'); const { exportSlidesPNG } = await import('./lib/exportSlides'); const ok = await exportSlidesPNG(); if (!ok) flash('Open the Board with a map first') }}
+            onPDF={async () => {
+              flash('Exporting PDF…')
+              const { exportSlidesPDF } = await import('./lib/exportSlides')
+              const ok = await exportSlidesPDF()
+              if (!ok) flash('Open the Board with a map first')
+            }}
+            onAllPNG={async () => {
+              flash('Exporting PNG…')
+              const { exportSlidesPNG } = await import('./lib/exportSlides')
+              const ok = await exportSlidesPNG()
+              if (!ok) flash('Open the Board with a map first')
+            }}
           />
-          <button className="btn btn-success" onClick={onShare} title="Copy a live link — others editing it sync in real time">Share</button>
+          {!viewOnly && <ShareMenu onEdit={onShareEdit} onView={onShareView} />}
           {isSupabaseConfigured && (
             <button className="btn" onClick={() => setPlansOpen(true)}>☁ Plans</button>
           )}
@@ -265,20 +382,20 @@ export default function App() {
         </div>
       </header>
 
-      {view === 'board' && <Toolbar />}
+      {view === 'board' && !viewOnly && <Toolbar />}
 
       {/* main */}
       {view === 'board' && (
         <div className="flex flex-1 min-h-0">
-          <RosterPanel />
+          <RosterPanel readOnly={viewOnly} />
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex-1 min-h-0 relative">
-              <TacticalBoard />
-              <LayersPanel />
+              <TacticalBoard readOnly={viewOnly} />
+              {!viewOnly && <LayersPanel />}
             </div>
-            <SlidesBar />
+            <SlidesBar readOnly={viewOnly} />
           </div>
-          <AssetPalette />
+          {!viewOnly && <AssetPalette />}
         </div>
       )}
       {view === 'lineup' && (
@@ -401,6 +518,35 @@ function OnlineBar() {
                 )}
               </div>
             ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ShareMenu({ onEdit, onView }: { onEdit: () => void; onView: () => void }) {
+  const [open, setOpen] = useState(false)
+  const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer'
+  const run = (fn: () => void) => {
+    setOpen(false)
+    void fn()
+  }
+  return (
+    <div className="relative">
+      <button className="btn btn-success" onClick={() => setOpen((v) => !v)} title="Share links">
+        Share ▾
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1.5 z-50 w-56 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
+            <button className={item} onClick={() => run(onEdit)}>
+              Edit link · live sync
+            </button>
+            <button className={item} onClick={() => run(onView)}>
+              View-only link
+            </button>
           </div>
         </>
       )}

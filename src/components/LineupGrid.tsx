@@ -171,9 +171,11 @@ const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSq
         <span
           draggable
           onDragStart={(e) => {
+            useBoardStore.getState().setEditingLock('roster')
             e.dataTransfer.setData('squadMove', id)
             e.dataTransfer.effectAllowed = 'copyMove'
           }}
+          onDragEnd={() => useBoardStore.getState().setEditingLock(null)}
           title="Drag: reorder squads, or drop onto a vehicle"
           className="shrink-0 grid place-items-center h-5 w-4 -ml-0.5 rounded text-gray-400 hover:text-white hover:bg-edge text-sm cursor-grab active:cursor-grabbing select-none"
         >
@@ -248,9 +250,11 @@ const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSq
               <div
                 draggable
                 onDragStart={(e) => {
+                  useBoardStore.getState().setEditingLock('roster')
                   e.dataTransfer.setData('memberMove', JSON.stringify({ squadId: id, memberId: m.id, name: m.name }))
                   e.dataTransfer.effectAllowed = 'move'
                 }}
+                onDragEnd={() => useBoardStore.getState().setEditingLock(null)}
                 title="Drag to another squad or back to the pool"
                 className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9px] font-bold text-white cursor-grab active:cursor-grabbing"
                 style={{ background: squad.color }}

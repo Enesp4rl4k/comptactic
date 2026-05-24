@@ -86,9 +86,11 @@ export default function PlayerPool() {
                   key={`${name}-${i}`}
                   draggable
                   onDragStart={(e) => {
+                    useBoardStore.getState().setEditingLock('roster')
                     e.dataTransfer.setData('playerName', name)
                     e.dataTransfer.effectAllowed = 'move'
                   }}
+                  onDragEnd={() => useBoardStore.getState().setEditingLock(null)}
                   title={`${name} — drag onto a squad`}
                   className="group flex items-center gap-1.5 rounded bg-panel2 border border-edge px-1.5 py-0.5 cursor-grab active:cursor-grabbing hover:border-accent"
                 >
