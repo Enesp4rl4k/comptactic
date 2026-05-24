@@ -22,7 +22,7 @@ export default function AssetPalette() {
   const activeSquad = squads.find((s) => s.id === activeSquadId) ?? null
 
   return (
-    <div className="w-56 shrink-0 bg-panel border-l border-edge overflow-y-auto flex flex-col">
+    <div className="workspace-panel-right overflow-y-auto flex flex-col">
       <div className="panel-header">Components</div>
 
       {/* squad-specific placement selector */}

@@ -175,6 +175,8 @@ export interface RosterSquad {
   /** Distinct squad color used to tint squad-specific markers on the board. */
   color: string
   members: RosterMember[]
+  /** Squad-specific orders / notes shown in briefing mode. */
+  briefingNote?: string
 }
 
 // ---- Vehicle assignments (who crews/rides which asset) ----

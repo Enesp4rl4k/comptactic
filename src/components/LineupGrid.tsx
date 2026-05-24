@@ -14,9 +14,7 @@ function memberInitials(name: string): string {
   return name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '?'
 }
 
-// Excel-style line-up: squads = columns, players = rows.
-// Granular selectors keep the grid from re-rendering on unrelated board changes;
-// each SquadColumn is memoized so editing one squad doesn't redraw the others.
+// Line-up: squads and vehicles stacked vertically (no horizontal scroll).
 export default function LineupGrid() {
   const mapId = useBoardStore((s) => s.mapId)
   const layerId = useBoardStore((s) => s.layerId)
@@ -31,16 +29,10 @@ export default function LineupGrid() {
 
   const totalPlayers = squads.reduce((n, s) => n + s.members.filter((m) => m.name.trim()).length, 0)
 
-  // Visible rows = largest squad's player count + 1 empty row (capped at 9)
-  const maxRows = Math.min(
-    MAX_SLOTS,
-    Math.max(1, ...squads.map((s) => Math.min(MAX_SLOTS, s.members.length + 1))),
-  )
-
   return (
     <div className="h-full flex flex-col bg-bg">
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-edge bg-panel">
-        <h2 className="font-semibold">Line-up</h2>
+      <div className="lineup-header">
+        <h2 className="font-display font-semibold text-sm tracking-wide">Line-up</h2>
         {layer && (
           <span className="text-xs text-gray-400">
             {map!.name} · {layer.name}
@@ -56,50 +48,35 @@ export default function LineupGrid() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        {squads.length === 0 ? (
-          <div className="grid place-items-center h-full text-center text-gray-500">
-            <div>
-              <div className="text-4xl mb-2">📋</div>
-              <p>No squads yet.</p>
-              <button onClick={addSquad} className="mt-3 btn btn-primary">
-                + Add First Squad
-              </button>
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="p-4">
+          {squads.length === 0 ? (
+            <div className="grid place-items-center min-h-[12rem] text-center text-gray-500">
+              <div>
+                <div className="text-4xl mb-2">📋</div>
+                <p>No squads yet.</p>
+                <button onClick={addSquad} className="mt-3 btn btn-primary">
+                  + Add First Squad
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="inline-flex gap-2 items-start">
-            {/* row number labels */}
-            <div className="shrink-0 pt-[42px]">
-              {Array.from({ length: maxRows }).map((_, i) => (
-                <div key={i} className="h-9 w-8 grid place-items-center text-xs text-gray-500 border-b border-edge/40">
-                  {i + 1}
-                </div>
+          ) : (
+            <div className="lineup-stack mx-auto w-full max-w-2xl flex flex-col gap-3">
+              {squads.map((sq) => (
+                <SquadColumn key={sq.id} squad={sq} />
               ))}
             </div>
+          )}
+        </div>
 
-            {squads.map((sq) => (
-              <SquadColumn key={sq.id} squad={sq} rows={maxRows} />
-            ))}
-
-            <button
-              onClick={addSquad}
-              className="shrink-0 mt-[42px] h-9 px-3 rounded border border-dashed border-edge text-gray-400 hover:border-gray-500 hover:text-gray-200 text-sm"
-            >
-              + Squad
-            </button>
-          </div>
-        )}
+        <VehiclePanel />
       </div>
-
-      <VehiclePanel />
     </div>
   )
 }
 
-// Memoized: re-renders only when this squad's object reference or `rows` changes.
-// Store actions are stable references, so they don't break memoization.
-const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSquad; rows: number }) {
+// Memoized: re-renders only when this squad's object reference changes.
+const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad }) {
   const updateSquad = useBoardStore((s) => s.updateSquad)
   const setSquadColor = useBoardStore((s) => s.setSquadColor)
   const removeSquad = useBoardStore((s) => s.removeSquad)
@@ -116,6 +93,7 @@ const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSq
   const [dragOver, setDragOver] = useState(false)
   const full = count >= MAX_SLOTS
   const visible = Math.min(MAX_SLOTS, count + (count < MAX_SLOTS ? 1 : 0))
+  const rows = Math.max(1, visible)
 
   const focusNext = (index: number) => {
     setTimeout(() => {
@@ -126,7 +104,7 @@ const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSq
 
   return (
     <div
-      className={`shrink-0 w-56 rounded border bg-panel overflow-hidden transition-colors ${
+      className={`w-full rounded border bg-panel overflow-hidden transition-colors ${
         dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
       }`}
       onDragOver={(e) => {
@@ -208,11 +186,8 @@ const SquadColumn = memo(function SquadColumn({ squad, rows }: { squad: RosterSq
         </button>
       </div>
 
-      {/* rows */}
+      {/* player rows */}
       {Array.from({ length: rows }).map((_, i) => {
-        if (i >= visible) {
-          return <div key={i} className="h-9 border-b border-edge/20" />
-        }
         const m = squad.members[i]
         const isAddRow = i === count && count < MAX_SLOTS
         const isLeader = i === 0

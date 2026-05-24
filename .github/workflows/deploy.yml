@@ -1,8 +1,8 @@
 name: Deploy to GitHub Pages
 
+# Vercel is the primary host. This workflow only runs manually after GitHub Pages
+# is enabled: Settings → Pages → Source: GitHub Actions.
 on:
-  push:
-    branches: [master, main]
   workflow_dispatch:
 
 permissions:

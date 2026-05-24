@@ -37,9 +37,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Shift + Arrow/Line', 'Constrain to 45° angles'],
       ['Pen', 'Start near a previous stroke end to continue it'],
       ['Zone', 'Click corners, double-click / Enter to close'],
-      ['# Snap', 'Snaps both drags and new shapes to the grid'],
       ['Hover FOB', 'Show 150 m / 300 m radius rings'],
-      ['Briefing → arrows / Space', 'Next-prev slide / play-pause'],
+      ['Briefing → ← / →', 'Change slides manually (squad notes in side panel)'],
     ],
   },
 ]

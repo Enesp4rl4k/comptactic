@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from './ui/Icons'
 import { useBoardStore } from '../store/useBoardStore'
 
@@ -10,10 +9,8 @@ export default function SlidesBar({ readOnly = false }: { readOnly?: boolean }) 
   const addSlide = useBoardStore((s) => s.addSlide)
   const removeSlide = useBoardStore((s) => s.removeSlide)
   const renameSlide = useBoardStore((s) => s.renameSlide)
-  const setSlideNotes = useBoardStore((s) => s.setSlideNotes)
   const nextSlide = useBoardStore((s) => s.nextSlide)
   const prevSlide = useBoardStore((s) => s.prevSlide)
-  const [notesOpen, setNotesOpen] = useState(false)
 
   const idx = slides.findIndex((s) => s.id === activeSlideId)
   const active = slides[idx]
@@ -67,53 +64,22 @@ export default function SlidesBar({ readOnly = false }: { readOnly?: boolean }) 
           {idx + 1}/{slides.length}
         </span>
 
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => setNotesOpen((v) => !v)}
-            title="Slide briefing notes"
-            className={`h-8 px-2.5 rounded-lg border text-xs shrink-0 cursor-pointer transition-colors ${
-              notesOpen || active?.notes
-                ? 'bg-highlight/15 border-highlight/50 text-highlight'
-                : 'bg-panel2 border-edge text-zinc-500 hover:text-zinc-200'
-            }`}
-          >
-            Notes
-          </button>
-        )}
-
         <div className="flex gap-1 overflow-x-auto ml-1 min-w-0 flex-1 pb-0.5">
           {slides.map((s, i) => (
             <button
               key={s.id}
               type="button"
               onClick={() => setActiveSlide(s.id)}
-              title={s.notes ? `${s.name}\n${s.notes}` : s.name}
+              title={s.name}
               className={`slide-pill max-w-[10rem] truncate font-medium ${
                 s.id === activeSlideId ? 'slide-pill-active' : 'slide-pill-idle'
-              } ${s.notes ? 'ring-1 ring-amber-500/35' : ''}`}
+              }`}
             >
               {s.name || i + 1}
             </button>
           ))}
         </div>
       </div>
-
-      {notesOpen && !readOnly && (
-        <div className="px-3 pb-2">
-          <textarea
-            value={active?.notes ?? ''}
-            onChange={(e) => setSlideNotes(activeSlideId, e.target.value)}
-            placeholder="Briefing notes for this slide…"
-            rows={2}
-            className="w-full rounded bg-panel2 border border-edge px-2 py-1.5 text-sm text-gray-200 outline-none focus:border-accent resize-y min-h-[3rem] placeholder:text-gray-600"
-          />
-        </div>
-      )}
-
-      {readOnly && active?.notes && (
-        <div className="px-3 pb-2 text-sm text-gray-300 border-t border-edge/50 pt-2">{active.notes}</div>
-      )}
     </div>
   )
 }

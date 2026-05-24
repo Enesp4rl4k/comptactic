@@ -12,10 +12,10 @@ export default function RosterPanel({ readOnly = false }: { readOnly?: boolean }
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
 
   return (
-    <div className="w-64 shrink-0 bg-panel border-r border-edge flex flex-col">
-      {/* layer info */}
+    <div className="workspace-panel-left">
       <div className="px-3 py-3 border-b border-edge">
         <div className="panel-header !border-0 !px-0 !py-0 mb-1.5">Active Layer</div>
+        <div className="layer-info-card">
         {customImage ? (
           <div className="font-medium text-sm truncate">🖼 {customImageName || 'Custom image'}</div>
         ) : layer ? (
@@ -32,6 +32,7 @@ export default function RosterPanel({ readOnly = false }: { readOnly?: boolean }
         ) : (
           <div className="text-xs text-gray-600">No map selected</div>
         )}
+        </div>
       </div>
 
       {/* roster */}

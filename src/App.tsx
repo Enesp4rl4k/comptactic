@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Toolbar from './components/Toolbar'
 import AssetPalette from './components/AssetPalette'
 import RosterPanel from './components/RosterPanel'
@@ -17,6 +17,8 @@ import TemplatesModal from './components/TemplatesModal'
 import ShortcutsModal from './components/ShortcutsModal'
 import SpawnTimeline from './components/SpawnTimeline'
 import { IconChevronDown, IconCloud, IconHelp, IconMap, IconPlay } from './components/ui/Icons'
+import { DropdownMenuPortal } from './components/ui/DropdownMenu'
+import BoardContextBar from './components/BoardContextBar'
 import HomeScreen from './components/HomeScreen'
 import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
@@ -63,7 +65,6 @@ export default function App() {
   const store = useBoardStore()
   const { user } = useAuth()
   const map = store.mapId ? MAP_BY_ID[store.mapId] : null
-  const layerId = store.layerId
   const mapLabel = store.customImage ? store.customImageName || 'Custom image' : map ? map.name : 'Select Map'
 
   const collabNotice = useBoardStore((s) => s.collabNotice)
@@ -185,16 +186,23 @@ export default function App() {
     return false
   }
 
-  const onNewPlan = () => {
+  const onNewSession = () => {
     const snap = store.toSnapshot()
-    if (snapshotHasWork(snap) && !window.confirm('Start a new blank plan? Current work will be cleared.')) return
+    if (
+      snapshotHasWork(snap) &&
+      !window.confirm(
+        'Start a new tactic session?\n\nA fresh room is created and the current plan is cleared. Share links from the old room will no longer sync here.',
+      )
+    ) {
+      return
+    }
     clearLocal()
     useBoardStore.getState().resetToBlank()
     setCurrentPlanId(null)
     setCurrentTitle('Untitled plan')
     setView('board')
     setRoomId(createNewRoom())
-    flash('New blank plan')
+    flash('New tactic session — new room opened')
   }
 
   const copyLink = async (url: string, msg: string) => {
@@ -267,7 +275,7 @@ export default function App() {
   if (!roomId) {
     return (
       <HomeScreen
-        onCreateRoom={() => {
+        onOpenRoom={() => {
           clearLocal()
           useBoardStore.getState().resetToBlank()
           setCurrentPlanId(null)
@@ -287,20 +295,12 @@ export default function App() {
     return (
       <div className="h-full flex flex-col bg-bg">
         {readOnly && (
-          <div className="shrink-0 px-3 py-1 text-center text-[10px] text-amber-200 bg-amber-500/10 border-b border-amber-500/25">
+          <div className="read-only-banner">
             {urlViewOnly ? 'View-only link' : 'View access'}
           </div>
         )}
-        <div className="shrink-0 px-3 py-1.5 text-xs text-gray-400 border-b border-edge truncate">
-          {mapLabel}
-          {layerId && map && (
-            <span className="text-gray-500">
-              {' '}
-              · {map.layers.find((l) => l.id === layerId)?.name}
-            </span>
-          )}
-        </div>
-        <div className="flex-1 min-h-0">
+        <BoardContextBar />
+        <div className="board-stage flex-1 min-h-0">
           <TacticalBoard readOnly={readOnly} />
         </div>
       </div>
@@ -310,36 +310,65 @@ export default function App() {
   return (
     <div className="h-full flex flex-col">
       {readOnly && (
-        <div className="shrink-0 px-4 py-2 text-center text-xs text-amber-100/90 bg-amber-500/10 border-b border-amber-500/20">
+        <div className="read-only-banner">
           {urlViewOnly
             ? 'View-only link — you can watch the plan but not edit it'
             : 'View access — ask the host for edit permission in Members'}
         </div>
       )}
-      <header className="app-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-12 bg-panel/95 border-b border-edge backdrop-blur-md shrink-0">
-        <button
-          type="button"
-          onClick={readOnly ? undefined : onNewPlan}
-          disabled={readOnly}
-          title={readOnly ? 'CompTactic' : 'New blank plan'}
-          className={`brand-mark font-display font-bold text-[15px] tracking-wide select-none shrink-0 ${
-            readOnly ? 'cursor-default text-zinc-400' : 'cursor-pointer text-zinc-300 hover:text-white'
-          }`}
+      <header className="app-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-12 bg-panel/95 border-b border-edge backdrop-blur-md shrink-0 overflow-visible z-20">
+        <div
+          className="brand-mark font-display font-bold text-[15px] tracking-wide select-none shrink-0 text-zinc-300"
+          title="CompTactic"
         >
           Comp<span className="brand-accent text-highlight">Tactic</span>
-        </button>
+        </div>
+        {roomId && (
+          <span className="room-chip" title="Room code">
+            {roomId}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => {
-            if (window.confirm('Leave this room and return to the home screen?')) {
+            if (window.confirm('Leave this room and return to the entry screen?')) {
               leaveToHome()
               setRoomId(null)
             }
           }}
-          className="btn btn-ghost text-xs hidden md:inline-flex"
-          title="Back to home"
+          className="btn btn-ghost text-xs hidden sm:inline-flex"
+          title="Entry screen"
         >
-          Home
+          Entry
+        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onNewSession}
+            className="btn btn-ghost text-xs hidden sm:inline-flex gap-1"
+            title="New tactic session (fresh room)"
+          >
+            <span className="text-highlight">+</span>
+            New session
+          </button>
+        )}
+        {canEdit && (
+          <button type="button" onClick={onNewSession} className="btn btn-icon sm:hidden shrink-0" title="New session">
+            +
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm('Leave this room and return to the entry screen?')) {
+              leaveToHome()
+              setRoomId(null)
+            }
+          }}
+          className="btn btn-icon sm:hidden shrink-0"
+          title="Entry screen"
+        >
+          ⌂
         </button>
         <button
           onClick={() => setPickerOpen(true)}
@@ -363,7 +392,7 @@ export default function App() {
           </TabBtn>
         </div>
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-1.5 overflow-x-auto shrink-0">
+        <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0 min-w-0 overflow-visible">
           {canEdit && (
             <>
               <button className="btn btn-success" onClick={onSave} title="Save to cloud">
@@ -425,10 +454,11 @@ export default function App() {
 
       {/* main */}
       {view === 'board' && (
-        <div key="view-board" className="flex flex-1 min-h-0 animate-view-in">
+        <div key="view-board" className="workspace-board animate-view-in">
           <RosterPanel readOnly={readOnly} />
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="flex-1 min-h-0 relative">
+          <div className="workspace-board-center">
+            <BoardContextBar />
+            <div className="board-stage">
               <TacticalBoard readOnly={readOnly} />
               {canEdit && <CollabBanner />}
               {canEdit && <LayersPanel />}
@@ -471,7 +501,7 @@ export default function App() {
         />
       )}
 
-      {briefingOpen && <BriefingMode onClose={() => setBriefingOpen(false)} />}
+      {briefingOpen && <BriefingMode onClose={() => setBriefingOpen(false)} canEdit={canEdit} />}
       {templatesOpen && <TemplatesModal onClose={() => setTemplatesOpen(false)} flash={flash} />}
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
       <RoomMembersModal
@@ -551,26 +581,34 @@ function OnlineBar({ onOpenMembers }: { onOpenMembers: () => void }) {
 
 function ShareMenu({ onEdit, onView }: { onEdit: () => void; onView: () => void }) {
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
   const run = (fn: () => void) => {
     setOpen(false)
     void fn()
   }
   return (
-    <div className="relative">
-      <button className="btn btn-success gap-1" onClick={() => setOpen((v) => !v)} title="Share links">
+    <>
+      <button
+        ref={anchorRef}
+        type="button"
+        className="btn btn-success gap-1"
+        onClick={() => setOpen((v) => !v)}
+        title="Share links"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
         Share
         <IconChevronDown className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
       </button>
-      {open && (
-        <>
-          <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
-          <div className="dropdown-menu w-56">
-            <button className="dropdown-item" onClick={() => run(onEdit)}>Room link · host grants edit</button>
-            <button className="dropdown-item" onClick={() => run(onView)}>View-only link</button>
-          </div>
-        </>
-      )}
-    </div>
+      <DropdownMenuPortal open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} className="w-56">
+        <button type="button" className="dropdown-item" onClick={() => run(onEdit)}>
+          Room link · host grants edit
+        </button>
+        <button type="button" className="dropdown-item" onClick={() => run(onView)}>
+          View-only link
+        </button>
+      </DropdownMenuPortal>
+    </>
   )
 }
 
@@ -586,28 +624,40 @@ function ExportMenu({
   onSheetPNG: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
   const run = (fn: () => void) => {
     setOpen(false)
     fn()
   }
   return (
-    <div className="relative">
-      <button className="btn gap-1" onClick={() => setOpen((v) => !v)} title="Export">
+    <>
+      <button
+        ref={anchorRef}
+        type="button"
+        className="btn gap-1"
+        onClick={() => setOpen((v) => !v)}
+        title="Export"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
         Export
         <IconChevronDown className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
       </button>
-      {open && (
-        <>
-          <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
-          <div className="dropdown-menu w-52">
-            <button className="dropdown-item" onClick={() => run(onPNG)}>PNG · current slide</button>
-            <button className="dropdown-item" onClick={() => run(onPDF)}>PDF · all slides</button>
-            <button className="dropdown-item" onClick={() => run(onAllPNG)}>PNG · all slides</button>
-            <button className="dropdown-item" onClick={() => run(onSheetPNG)}>PNG · tactic sheet</button>
-          </div>
-        </>
-      )}
-    </div>
+      <DropdownMenuPortal open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} className="w-52">
+        <button type="button" className="dropdown-item" onClick={() => run(onPNG)}>
+          PNG · current slide
+        </button>
+        <button type="button" className="dropdown-item" onClick={() => run(onPDF)}>
+          PDF · all slides
+        </button>
+        <button type="button" className="dropdown-item" onClick={() => run(onAllPNG)}>
+          PNG · all slides
+        </button>
+        <button type="button" className="dropdown-item" onClick={() => run(onSheetPNG)}>
+          PNG · tactic sheet
+        </button>
+      </DropdownMenuPortal>
+    </>
   )
 }
 
@@ -643,33 +693,34 @@ function MobileTab({ label, active, onClick }: { label: string; active: boolean;
 
 function UserMenu({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef<HTMLButtonElement>(null)
   const initial = email.trim().charAt(0).toUpperCase() || 'U'
   return (
-    <div className="relative">
+    <>
       <button
+        ref={anchorRef}
+        type="button"
         onClick={() => setOpen((v) => !v)}
         title={email}
+        aria-expanded={open}
+        aria-haspopup="menu"
         className="h-8 w-8 rounded-full bg-highlight text-white text-sm font-semibold grid place-items-center cursor-pointer hover:bg-blue-500 transition-colors"
       >
         {initial}
       </button>
-      {open && (
-        <>
-          <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
-          <div className="dropdown-menu w-56">
-            <div className="dropdown-label truncate">{email}</div>
-            <button
-              onClick={() => {
-                setOpen(false)
-                onSignOut()
-              }}
-              className="dropdown-item"
-            >
-              Sign out
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+      <DropdownMenuPortal open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} className="w-56">
+        <div className="dropdown-label truncate">{email}</div>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false)
+            onSignOut()
+          }}
+          className="dropdown-item"
+        >
+          Sign out
+        </button>
+      </DropdownMenuPortal>
+    </>
   )
 }
