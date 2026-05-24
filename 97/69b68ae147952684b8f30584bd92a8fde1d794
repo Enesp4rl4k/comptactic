@@ -1,0 +1,284 @@
+src/components/TemplatesModal.tsx
+  s_ef05d5e0d2aed5::t_f7f8ccdbf89510 20-22
+  s_ef05d5e0d2aed5::t_ef8a9ac8f505c9 130,139,145-162
+  s_ef05d5e0d2aed5::t_b3a8f7dc06bb2e 4
+  s_ef05d5e0d2aed5::t_db33fc87459956 106-110,113-124
+src/lib/mergeRoster.ts
+  s_ef05d5e0d2aed5::t_52456e5ad1bfb2 1-83
+src/lib/imageCache.ts
+  s_ef05d5e0d2aed5::t_203b4d295461d7 1-50
+vite.config.ts
+  s_ef05d5e0d2aed5::t_fe2eb27e7c047d 8-20
+src/components/CaptureOverlayBar.tsx
+  s_ef05d5e0d2aed5::t_420d95ce53f1b5 2-8,13-61
+  s_ef05d5e0d2aed5::t_a56e87c2a03d9c 1,9-12
+src/components/CollabBanner.tsx
+  s_ef05d5e0d2aed5::t_c40f7caab2bdb6 25
+  s_ef05d5e0d2aed5::t_ff67467b0ea331 1-16,18-24,26-27
+  s_ef05d5e0d2aed5::t_19b75db959e94b 17
+src/lib/collab.ts
+  s_ef05d5e0d2aed5::t_b5be32bc15aa8c 20-21
+  s_ef05d5e0d2aed5::t_af64f39cab9649 64
+  s_ef05d5e0d2aed5::t_2c67d9c4de64d7 135
+  s_ef05d5e0d2aed5::t_1610aefddc097b 98-99
+  s_ef05d5e0d2aed5::t_46c6fd982c48c5 22-23
+  s_ef05d5e0d2aed5::t_d403d703d0133a 233-235
+  s_ef05d5e0d2aed5::t_11352e824f79ae 132-134,144-147,151-166,168-172
+  s_ef05d5e0d2aed5::t_b142f21a1cd76f 112-120
+src/lib/roomPolicy.ts
+  s_ef05d5e0d2aed5::t_8f69abf4e47993 1-25,27-44
+  s_ef05d5e0d2aed5::t_91e5311140b43f 26
+index.html
+  s_ef05d5e0d2aed5::t_5035862d1bf472 7
+public/capture-points.json
+  s_ef05d5e0d2aed5::t_81085f6229d0b5 1
+scripts/gen-capture-points.mjs
+  s_ef05d5e0d2aed5::t_20992b65ecac2f 1-111
+supabase/migrations/002_shares_hardening.sql
+  s_ef05d5e0d2aed5::t_6398dfab00ac98 1-16
+src/hooks/useBoardViewport.ts
+  s_ef05d5e0d2aed5::t_07bafa248acce7 1
+  s_ef05d5e0d2aed5::t_af52a7e6a91d7b 2-6,8-33
+  s_ef05d5e0d2aed5::t_2f153b0324d850 7
+src/types.ts
+  s_ef05d5e0d2aed5::t_cca81569e4b230 17
+  s_ef05d5e0d2aed5::t_3ace745ddbd72f 25
+  s_ef05d5e0d2aed5::t_ce67ec15226e43 73-81
+  s_ef05d5e0d2aed5::t_9310c18bbec242 47-48
+  s_ef05d5e0d2aed5::t_d3419d4f9b3848 114
+tests/e2e/smoke.spec.ts
+  s_ef05d5e0d2aed5::t_c4313a2dfe55d4 1-13
+package.json
+  s_ef05d5e0d2aed5::t_b9b29f646c1f6a 25
+  s_ef05d5e0d2aed5::t_c1285555713b6c 10-12
+src/components/PlayerPool.tsx
+  s_ef05d5e0d2aed5::t_6748d526d8516d 94-99
+  s_ef05d5e0d2aed5::t_af214682af8950 3
+  s_ef05d5e0d2aed5::t_4bcd1bdbfe258b 117
+  s_ef05d5e0d2aed5::t_30fed071f65b8d 36-49
+  s_ef05d5e0d2aed5::t_227a9e3e216b05 11
+src/components/SlidesBar.tsx
+  s_ef05d5e0d2aed5::t_588b72af28ad93 122,128,136,140,142-143,146
+  s_ef05d5e0d2aed5::t_03ff735c0fecf2 26-28,37-39,43,51,56-60,62-64,66,75,77-78,85,89,92-94
+  s_ef05d5e0d2aed5::t_5761221ad43238 2
+supabase/schema.sql
+  s_ef05d5e0d2aed5::t_3d1b2dd2ab6c20 55-56,63-64,67-68
+tailwind.config.js
+  s_ef05d5e0d2aed5::t_de7453af5074e1 11-20
+src/components/TeamSlider.tsx
+  s_ef05d5e0d2aed5::t_a7a92bdd0314d0 1-62
+src/store/useBoardStore.ts
+  s_ef05d5e0d2aed5::t_fe552436a7a413 8
+  s_ef05d5e0d2aed5::t_1a15a3a0ae63a5 1083,1096-1097,1099-1101,1107-1123
+  s_ef05d5e0d2aed5::t_1202ba2d0d5d6c 5-6
+  s_ef05d5e0d2aed5::t_b26dee6858c8bb 134-138
+  s_ef05d5e0d2aed5::t_fd88dc1139c849 478-509
+  s_ef05d5e0d2aed5::t_21ee69447a3e54 1155-1157
+  s_ef05d5e0d2aed5::t_674278bde7269d 1237,1242
+  s_ef05d5e0d2aed5::t_7378364626ebdd 913-962
+  s_ef05d5e0d2aed5::t_11f405f597ffce 177-178
+  s_ef05d5e0d2aed5::t_28b6df1ad57637 352
+  s_ef05d5e0d2aed5::t_9a8feba92df282 286-288,295,307-308
+  s_ef05d5e0d2aed5::t_9baa15406e5b2e 326-328
+  s_ef05d5e0d2aed5::t_ba9d4b022340e2 277
+  s_ef05d5e0d2aed5::t_56db736c340eaf 574,585-586,595-601
+  s_ef05d5e0d2aed5::t_e022108cd1f802 1075-1078,1081-1082,1084-1085,1090-1093,1102-1103,1125-1126
+  s_ef05d5e0d2aed5::t_def5f3753b98b4 470-476
+  s_ef05d5e0d2aed5::t_bff4910ea13edd 830-847
+  s_ef05d5e0d2aed5::t_c098acf2a2805c 7
+  s_ef05d5e0d2aed5::t_7a23fc6ce0598b 281
+  s_ef05d5e0d2aed5::t_c0ed01e7ddb91e 397-402,404-409,411-412,414
+  s_ef05d5e0d2aed5::t_d3aa56c9b6d9c6 278
+  s_ef05d5e0d2aed5::t_509f5e8d2d9ef6 289-293
+  s_ef05d5e0d2aed5::t_d5cf22a75ffefa 1236,1238-1241
+  s_ef05d5e0d2aed5::t_69a1f96f93e019 197-202
+  s_ef05d5e0d2aed5::t_ec078cb778de5c 1148
+src/lib/roomEntry.ts
+  s_ef05d5e0d2aed5::t_ee6a773f53d69f 2-70
+  s_ef05d5e0d2aed5::t_4782e6d96fd843 1
+src/lib/collabPayload.ts
+  s_ef05d5e0d2aed5::t_13cb6c23453df8 1-66
+src/components/RoomMembersModal.tsx
+  s_ef05d5e0d2aed5::t_5b56808a695247 1-43,45-55,57-74,76-77,79-118,120-127,129-134,136-202
+  s_ef05d5e0d2aed5::t_4b07025fdfd824 44,56,75,78,119,128,135
+src/lib/capturePoints.ts
+  s_ef05d5e0d2aed5::t_990b5597c376d9 1-25
+.github/workflows/ci.yml
+  s_ef05d5e0d2aed5::t_4a385bcfb3aac9 1-21
+src/hooks/useCapturePointsLayer.ts
+  s_ef05d5e0d2aed5::t_c69caaf2885c30 1-31
+src/components/MapPicker.tsx
+  s_ef05d5e0d2aed5::t_e5670a25254326 7,71-76,81,85,91,100,111,120,129,131,134,142,152,160-161,168,173,184,190,192-194,196-200,205
+src/components/StaticMapLayer.tsx
+  s_ef05d5e0d2aed5::t_4558dfedf28079 1-107
+src/lib/useImage.ts
+  s_ef05d5e0d2aed5::t_67c8c2bcb68683 2,6,8-10,18-20,22,24-36
+src/lib/exportTacticSheet.ts
+  s_ef05d5e0d2aed5::t_31c552507c9508 1-108
+src/lib/plans.ts
+  s_ef05d5e0d2aed5::t_dc6c6df0bc2f48 68-72,74-75
+src/components/Toolbar.tsx
+  s_ef05d5e0d2aed5::t_a48bbbfd661fc8 2
+  s_ef05d5e0d2aed5::t_a89255276a56ec 73-95
+  s_ef05d5e0d2aed5::t_97abc38e6b31fd 135
+  s_ef05d5e0d2aed5::t_0363acacb8f784 29-43
+  s_ef05d5e0d2aed5::t_8f246c104fa8ea 69
+  s_ef05d5e0d2aed5::t_25e204ee8d327d 17
+  s_ef05d5e0d2aed5::t_a2cfb0cca074c6 21-25
+  s_ef05d5e0d2aed5::t_81818231e70006 143
+  s_ef05d5e0d2aed5::t_a9c2b39d22a02a 46-47,53
+  s_ef05d5e0d2aed5::t_6abc2794c42e2f 3,5
+src/components/LayersPanel.tsx
+  s_ef05d5e0d2aed5::t_affed13205b63c 12
+  s_ef05d5e0d2aed5::t_64332a17108706 53
+src/hooks/useCollabSync.ts
+  s_ef05d5e0d2aed5::t_a4ee2e44e771bc 23
+  s_ef05d5e0d2aed5::t_fd3b93fde716ba 16
+  s_ef05d5e0d2aed5::t_0ca37684b34f89 1,3-15,20-22,24-127
+  s_ef05d5e0d2aed5::t_53ade9b0afc26a 2
+src/lib/useRafThrottle.ts
+  s_ef05d5e0d2aed5::t_9b6daa1a34873a 1-22
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_d22888409dc24c 1-23,26-48,50-65,67-74,76-79,81-82
+  s_ef05d5e0d2aed5::t_040f2fd7049f5d 24,49,66,75,80
+  s_ef05d5e0d2aed5::t_36c876bd062ce8 25
+src/components/TacticalBoard.tsx
+  s_ef05d5e0d2aed5::t_431d735aeb2970 142-143
+  s_ef05d5e0d2aed5::t_7ada82707a379c 215
+  s_ef05d5e0d2aed5::t_dc96e640820492 24-25,30,32
+  s_ef05d5e0d2aed5::t_803b5f62c9dc41 133-140
+  s_ef05d5e0d2aed5::t_16e23fe0eb6752 359-362
+  s_ef05d5e0d2aed5::t_04d8e62e089b31 609
+  s_ef05d5e0d2aed5::t_bbc917a13ed239 637
+  s_ef05d5e0d2aed5::t_221d681bf661a7 28-29
+  s_ef05d5e0d2aed5::t_57b3a9dd60887e 459
+  s_ef05d5e0d2aed5::t_8c1319d5115ac5 625-635
+  s_ef05d5e0d2aed5::t_e1cb16a9a492ce 673-678
+  s_ef05d5e0d2aed5::t_867a2523fb8cdd 840-850
+  s_ef05d5e0d2aed5::t_65b879baa5a252 978-993,997-1005
+  s_ef05d5e0d2aed5::t_5c226a61bb1766 994-996
+  s_ef05d5e0d2aed5::t_b7f0c6aedfca87 411-440,444,458
+  s_ef05d5e0d2aed5::t_2fb655562edc41 26-27
+  s_ef05d5e0d2aed5::t_ef56a7e602295c 79
+  s_ef05d5e0d2aed5::t_fdb1a7d1a62754 144
+  s_ef05d5e0d2aed5::t_e1e91b051985ac 407-410
+  s_ef05d5e0d2aed5::t_3809dfaafbf570 209
+  s_ef05d5e0d2aed5::t_288197f36f9d49 491-505
+src/lib/parseSignup.ts
+  s_ef05d5e0d2aed5::t_82c80d848cce57 1-107
+playwright.config.ts
+  s_ef05d5e0d2aed5::t_790961a22a7d4d 1-16
+src/lib/presence.ts
+  s_ef05d5e0d2aed5::t_af2ba3253900d6 269
+  s_ef05d5e0d2aed5::t_6a1e1bddf53cbe 4-11,13,23,47,56-57,63-67,72-90,98-99,101,106,111,116,118-121,125,127,137-188,193,195-207,209-212,214,230,233-238,248-265,271-272,278,282
+src/components/ui/Icons.tsx
+  s_ef05d5e0d2aed5::t_b4e5aaa6ac17a8 1-97
+src/lib/mergeElements.ts
+  s_ef05d5e0d2aed5::t_81085f6229d0b5 1-56
+src/components/SpawnTimeline.tsx
+  s_ef05d5e0d2aed5::t_edd68aabd4f7bd 1-47
+README.md
+  s_ef05d5e0d2aed5::t_3472976914c54c 1,3,5,7,9-14,16,18-23,25-29,31,33,35-39,42-50,52-67
+src/lib/cpOverlay.ts
+  s_ef05d5e0d2aed5::t_32349f37919e6b 1-43
+src/lib/builtinTemplates.ts
+  s_ef05d5e0d2aed5::t_21b9fc0fa3dd72 1-2,7-14,16-49
+  s_ef05d5e0d2aed5::t_0d6d50978494a5 3-6,15
+src/components/ShortcutsModal.tsx
+  s_ef05d5e0d2aed5::t_9d44a7ecbda3e4 31
+src/App.tsx
+  s_ef05d5e0d2aed5::t_d355ab316d3f0e 450
+  s_ef05d5e0d2aed5::t_c886121d81abae 378-380
+  s_ef05d5e0d2aed5::t_ced6b68a0aac25 535
+  s_ef05d5e0d2aed5::t_db0a17a8ba9e09 322-324
+  s_ef05d5e0d2aed5::t_5a5da0a4fd9e42 20,24-25
+  s_ef05d5e0d2aed5::t_74964242b9c30b 577-587
+  s_ef05d5e0d2aed5::t_76f482f8868923 429,433-434,436,438
+  s_ef05d5e0d2aed5::t_40a0aae7812f29 76-78,81-82
+  s_ef05d5e0d2aed5::t_7bf9f299dc030d 354,362,366
+  s_ef05d5e0d2aed5::t_430e767d626649 66
+  s_ef05d5e0d2aed5::t_a65327e08f6a8c 109
+  s_ef05d5e0d2aed5::t_da0736feb62d3c 304,432
+  s_ef05d5e0d2aed5::t_5bc1d30c767137 117
+  s_ef05d5e0d2aed5::t_3073b168651cdd 292
+  s_ef05d5e0d2aed5::t_042c22d872f99e 28
+  s_ef05d5e0d2aed5::t_0ab8c509d60f68 313
+  s_ef05d5e0d2aed5::t_54acca668dd64a 319,325,329
+  s_ef05d5e0d2aed5::t_718be9a7c32323 332-342
+  s_ef05d5e0d2aed5::t_fafa76882f1966 477-486
+  s_ef05d5e0d2aed5::t_12a36f6c371634 506-507,512-521,523-529
+  s_ef05d5e0d2aed5::t_fc93489f67b518 346
+  s_ef05d5e0d2aed5::t_e7a04aa654bd26 289,291
+  s_ef05d5e0d2aed5::t_3195d63d9a294c 442
+  s_ef05d5e0d2aed5::t_a944f96d397ba2 367
+  s_ef05d5e0d2aed5::t_606a678fca16e1 424
+  s_ef05d5e0d2aed5::t_870e4793c68ab9 444
+  s_ef05d5e0d2aed5::t_950479d57fe23b 397-402
+  s_ef05d5e0d2aed5::t_2c7505f9880bbc 501
+  s_ef05d5e0d2aed5::t_993205307bcf9b 312,314-316
+  s_ef05d5e0d2aed5::t_bc035f710d2538 231
+  s_ef05d5e0d2aed5::t_180945ac180466 19
+  s_ef05d5e0d2aed5::t_9b046d427b3bdb 326
+  s_ef05d5e0d2aed5::t_e35bba5046f59c 500,546
+  s_ef05d5e0d2aed5::t_b97379b5a9a981 589-592,595-598,601-606
+  s_ef05d5e0d2aed5::t_2c38da46509563 286-288,290,293-303,305-309
+  s_ef05d5e0d2aed5::t_a8e9fd764f54b8 73-75,79-80
+  s_ef05d5e0d2aed5::t_80fa746d6c6d6b 26-27
+  s_ef05d5e0d2aed5::t_1f93ff54527a48 54
+  s_ef05d5e0d2aed5::t_9e15d6b2f53083 658-660,662-666
+  s_ef05d5e0d2aed5::t_1e59f6fc94d0bf 488
+  s_ef05d5e0d2aed5::t_568826f9328867 267-285
+  s_ef05d5e0d2aed5::t_3660ed814a08da 428
+  s_ef05d5e0d2aed5::t_e52fffb6e7479f 347-348,350-351
+  s_ef05d5e0d2aed5::t_0569692c5a46f2 489-493
+  s_ef05d5e0d2aed5::t_33edbb756842bf 168-173
+  s_ef05d5e0d2aed5::t_9c9f43ae60e850 55,57,59-62
+  s_ef05d5e0d2aed5::t_6d07689d53a5cf 108
+  s_ef05d5e0d2aed5::t_4695b77197717d 495
+  s_ef05d5e0d2aed5::t_24842c21feee97 120
+  s_ef05d5e0d2aed5::t_e888940fe959a6 652
+  s_ef05d5e0d2aed5::t_930867ccf71e6b 115
+  s_ef05d5e0d2aed5::t_6f26a06eb99476 494
+  s_ef05d5e0d2aed5::t_04f68a83ff1f15 560-562,566-567,569
+  s_ef05d5e0d2aed5::t_a78058244da2fc 56,58
+  s_ef05d5e0d2aed5::t_da29c1e6e1930b 69-72,83-84
+  s_ef05d5e0d2aed5::t_7e8fdddab1e480 414
+  s_ef05d5e0d2aed5::t_05630bbaeb5ab8 41
+  s_ef05d5e0d2aed5::t_142c1f0d2c5aab 404
+  s_ef05d5e0d2aed5::t_85a4f662db080d 531,533
+  s_ef05d5e0d2aed5::t_6f38c2b8ec40a1 18
+  s_ef05d5e0d2aed5::t_23549884327da5 406-409,411-413
+src/index.css
+  s_ef05d5e0d2aed5::t_ba3e8117d1d25d 242-249
+  s_ef05d5e0d2aed5::t_ef2833600968e2 250-258
+  s_ef05d5e0d2aed5::t_fdc8a1c601f196 92-93
+  s_ef05d5e0d2aed5::t_d5b3ced3447310 199-236,238-241
+  s_ef05d5e0d2aed5::t_c56486962e1798 17,20,31,36,38,40,44-45,48-52,55,62-76,78-91,94-105,108-117,119-121,123-141,144-152,154-167,194-198,259,318-330,390-391,395-396,399,403
+  s_ef05d5e0d2aed5::t_a632faedb232ee 153
+  s_ef05d5e0d2aed5::t_2aec00b2dbb5bc 77
+  s_ef05d5e0d2aed5::t_c72c8cc413b33d 168-189
+  s_ef05d5e0d2aed5::t_4a2f90581d1f2f 106-107
+  s_ef05d5e0d2aed5::t_73deb8fba502e0 118,122
+  s_ef05d5e0d2aed5::t_4de75850b9bc7d 260-262,264-317
+  s_ef05d5e0d2aed5::t_801016ae68bba0 190-192
+  s_ef05d5e0d2aed5::t_54afd0f4a1b8ce 331-389
+  s_ef05d5e0d2aed5::t_825592f1b93a64 13-16
+  s_ef05d5e0d2aed5::t_31de07a424814c 142-143
+  s_ef05d5e0d2aed5::t_dc33603d2fec78 37,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "9769b68ae147952684b8f30584bd92a8fde1d794",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
