@@ -20,6 +20,7 @@ import { IconChevronDown, IconCloud, IconHelp, IconMap, IconPlay } from './compo
 import { DropdownMenuPortal } from './components/ui/DropdownMenu'
 import BoardContextBar from './components/BoardContextBar'
 import HomeScreen from './components/HomeScreen'
+import ThemeMenu from './components/ThemeMenu'
 import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
@@ -412,6 +413,7 @@ export default function App() {
               <span className="hidden lg:inline">Plans</span>
             </button>
           )}
+          <ThemeMenu />
           <button className="btn btn-icon" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)">
             <IconHelp />
           </button>
@@ -679,7 +681,7 @@ function UserMenu({ email, onSignOut }: { email: string; onSignOut: () => void }
         title={email}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="h-8 w-8 rounded-full bg-highlight text-zinc-950 text-sm font-semibold grid place-items-center cursor-pointer hover:bg-amber-400 transition-colors"
+        className="user-menu-avatar h-8 w-8 rounded-full bg-highlight text-zinc-950 text-sm font-semibold grid place-items-center cursor-pointer transition-colors"
       >
         {initial}
       </button>

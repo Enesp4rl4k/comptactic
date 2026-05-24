@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root,
+[data-ui-theme='red'] {
+  --ui-highlight-rgb: 220 38 38;
+  --ui-highlight-hover: #ef4444;
+}
+
+[data-ui-theme='amber'] {
+  --ui-highlight-rgb: 202 138 4;
+  --ui-highlight-hover: #facc15;
+}
+
+[data-ui-theme='blue'] {
+  --ui-highlight-rgb: 59 130 246;
+  --ui-highlight-hover: #60a5fa;
+}
+
+[data-ui-theme='steel'] {
+  --ui-highlight-rgb: 161 161 170;
+  --ui-highlight-hover: #d4d4d8;
+}
+
 html,
 body,
 #root {
@@ -11,7 +32,7 @@ body,
 
 body {
   background:
-    radial-gradient(ellipse 70% 45% at 0% 0%, rgba(202, 138, 4, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 0% 0%, rgb(var(--ui-highlight-rgb) / 0.06) 0%, transparent 55%),
     radial-gradient(ellipse 55% 40% at 100% 100%, rgba(82, 82, 91, 0.12) 0%, transparent 50%),
     #09090b;
   color: #e4e4e7;
@@ -23,7 +44,7 @@ body {
 }
 
 ::selection {
-  background: rgba(202, 138, 4, 0.35);
+  background: rgb(var(--ui-highlight-rgb) / 0.35);
 }
 
 @layer components {
@@ -42,11 +63,14 @@ body {
   }
   .btn-primary {
     @apply border-transparent bg-highlight text-zinc-950 shadow-sm shadow-highlight/25
-           hover:bg-amber-400 hover:text-zinc-950 hover:border-transparent;
+           hover:text-zinc-950 hover:border-transparent;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--ui-highlight-hover);
   }
   .btn-success {
-    @apply border-amber-600/35 bg-amber-600/15 text-amber-100
-           hover:bg-amber-500/25 hover:text-zinc-50 hover:border-amber-500/45;
+    @apply border-highlight/35 bg-highlight/15 text-zinc-100
+           hover:bg-highlight/25 hover:text-zinc-50 hover:border-highlight/45;
   }
   .btn-ghost {
     @apply border-transparent bg-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-100;
@@ -205,7 +229,7 @@ body {
   /* Header accent line */
   .app-header {
     @apply relative;
-    box-shadow: 0 1px 0 rgba(202, 138, 4, 0.1);
+    box-shadow: 0 1px 0 rgb(var(--ui-highlight-rgb) / 0.1);
   }
   .app-header::after {
     content: '';
@@ -214,7 +238,7 @@ body {
     right: 0;
     bottom: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(202, 138, 4, 0.35) 50%, transparent);
+    background: linear-gradient(90deg, transparent, rgb(var(--ui-highlight-rgb) / 0.35) 50%, transparent);
     pointer-events: none;
   }
 
@@ -223,7 +247,7 @@ body {
     @apply transition-[color,text-shadow] duration-200;
   }
   .brand-mark:hover:not(:disabled) .brand-accent {
-    text-shadow: 0 0 18px rgba(250, 204, 21, 0.5);
+    text-shadow: 0 0 18px rgb(var(--ui-highlight-rgb) / 0.5);
   }
 
   /* Session avatars */
@@ -246,8 +270,12 @@ body {
   .pool-chip {
     @apply px-2 py-0.5 rounded-md text-xs bg-panel2 border border-edge text-zinc-300 cursor-grab
            transition-[transform,box-shadow,border-color] duration-150
-           hover:border-highlight/35 hover:shadow-[0_0_10px_rgba(202,138,4,0.12)] hover:-translate-y-px
+           hover:border-highlight/35 hover:-translate-y-px
            active:scale-95 active:cursor-grabbing;
+    box-shadow: none;
+  }
+  .pool-chip:hover {
+    box-shadow: 0 0 10px rgb(var(--ui-highlight-rgb) / 0.12);
   }
 
   /* Site credit */
@@ -323,6 +351,12 @@ body {
       inset 0 0 80px rgba(0, 0, 0, 0.35),
       inset 0 -60px 90px rgba(9, 9, 11, 0.45);
   }
+  .home-theme-menu {
+    @apply fixed top-3 right-3 z-20;
+  }
+  .user-menu-avatar:hover {
+    background: var(--ui-highlight-hover);
+  }
   .home-main {
     @apply relative z-10 w-full max-w-[26rem] animate-view-in;
   }
@@ -334,9 +368,8 @@ body {
     font-family: theme('fontFamily.display');
   }
   .home-eyebrow-mark {
-    @apply h-2 w-0.5 rounded-full shrink-0 mr-0.5;
-    background: #dc2626;
-    box-shadow: 0 0 10px rgba(220, 38, 38, 0.65);
+    @apply h-2 w-0.5 rounded-full shrink-0 mr-0.5 bg-highlight;
+    box-shadow: 0 0 10px rgb(var(--ui-highlight-rgb) / 0.65);
   }
   .home-eyebrow-muted {
     @apply text-zinc-500;
@@ -345,8 +378,8 @@ body {
     @apply text-zinc-600;
   }
   .home-eyebrow-red {
-    color: #f87171;
-    text-shadow: 0 0 12px rgba(248, 113, 113, 0.45);
+    @apply text-highlight;
+    text-shadow: 0 0 12px rgb(var(--ui-highlight-rgb) / 0.45);
   }
   .home-logo {
     font-family: 'Russo One', theme('fontFamily.display'), system-ui, sans-serif;
@@ -356,18 +389,18 @@ body {
     @apply text-zinc-200;
   }
   .home-logo-accent {
-    color: #ef4444 !important;
-    text-shadow: 0 0 28px rgba(239, 68, 68, 0.55);
+    @apply text-highlight;
+    text-shadow: 0 0 28px rgb(var(--ui-highlight-rgb) / 0.55);
   }
   .home-kicker {
     @apply mt-3 text-[15px] text-zinc-500 leading-relaxed max-w-[22rem] mx-auto sm:mx-0;
   }
   .home-primary {
     @apply rounded-xl border border-zinc-700/60 bg-zinc-950/75 backdrop-blur-md p-5 sm:p-6 cursor-default;
-    border-left: 3px solid #dc2626;
+    border-left: 3px solid rgb(var(--ui-highlight-rgb) / 0.85);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.04) inset,
-      0 0 0 1px rgba(220, 38, 38, 0.12),
+      0 0 0 1px rgb(var(--ui-highlight-rgb) / 0.12),
       0 12px 40px rgba(0, 0, 0, 0.45);
   }
   .home-primary-copy {
@@ -380,19 +413,17 @@ body {
     @apply text-sm text-zinc-500;
   }
   .home-primary-btn {
-    @apply w-full h-10 text-sm font-semibold border-0 cursor-pointer;
-    background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%);
-    color: #18181b;
+    @apply w-full h-10 text-sm font-semibold border-0 cursor-pointer bg-highlight text-zinc-950;
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.25) inset,
-      0 4px 14px rgba(234, 179, 8, 0.28);
+      0 4px 14px rgb(var(--ui-highlight-rgb) / 0.28);
   }
   .home-primary-btn:hover:not(:disabled) {
-    background: linear-gradient(180deg, #facc15 0%, #eab308 100%);
+    background: var(--ui-highlight-hover);
     color: #09090b;
   }
   .home-primary-btn:focus-visible {
-    outline: 2px solid #ef4444;
+    outline: 2px solid rgb(var(--ui-highlight-rgb) / 0.9);
     outline-offset: 2px;
   }
   .home-divider {
@@ -403,14 +434,15 @@ body {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.35), rgba(234, 179, 8, 0.35), transparent);
+    background: linear-gradient(90deg, transparent, rgb(var(--ui-highlight-rgb) / 0.35), transparent);
   }
   .home-join-label {
     @apply block text-sm text-zinc-400 mb-2;
   }
   .home-join {
-    @apply rounded-xl border border-red-900/40 bg-zinc-950/65 backdrop-blur-sm p-4 sm:p-5;
-    box-shadow: inset 3px 0 0 rgba(220, 38, 38, 0.35);
+    @apply rounded-xl border border-zinc-700/50 bg-zinc-950/65 backdrop-blur-sm p-4 sm:p-5;
+    border-color: rgb(var(--ui-highlight-rgb) / 0.28);
+    box-shadow: inset 3px 0 0 rgb(var(--ui-highlight-rgb) / 0.35);
   }
   .home-join-row {
     @apply flex gap-2;
@@ -419,12 +451,16 @@ body {
     @apply flex-1 min-w-0 font-mono text-[13px] bg-zinc-950/80 border-zinc-700/70 text-zinc-200;
   }
   .home-join-input:focus {
-    border-color: rgba(234, 179, 8, 0.45);
-    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.2);
+    border-color: rgb(var(--ui-highlight-rgb) / 0.45);
+    box-shadow: 0 0 0 1px rgb(var(--ui-highlight-rgb) / 0.2);
   }
   .home-join-btn {
-    @apply shrink-0 px-4 h-10 bg-zinc-900/90 text-zinc-100 hover:bg-red-950/80 hover:text-red-100 cursor-pointer;
-    border: 1px solid rgba(239, 68, 68, 0.55);
+    @apply shrink-0 px-4 h-10 bg-zinc-900/90 text-zinc-100 cursor-pointer;
+    border: 1px solid rgb(var(--ui-highlight-rgb) / 0.55);
+  }
+  .home-join-btn:hover {
+    @apply text-highlight;
+    background: rgb(var(--ui-highlight-rgb) / 0.12);
   }
   .home-join-error {
     @apply mt-2 text-sm text-red-400;
@@ -432,14 +468,9 @@ body {
   .home-notes {
     @apply mt-10 pt-6 border-t border-zinc-800 flex flex-col gap-2 list-none p-0 m-0 text-sm text-zinc-500;
   }
-  .home-notes li:nth-child(1)::before,
-  .home-notes li:nth-child(3)::before {
-    background: #eab308;
-    box-shadow: 0 0 6px rgba(234, 179, 8, 0.35);
-  }
-  .home-notes li:nth-child(2)::before {
-    background: #ef4444;
-    box-shadow: 0 0 6px rgba(239, 68, 68, 0.35);
+  .home-notes li::before {
+    background: rgb(var(--ui-highlight-rgb) / 1);
+    box-shadow: 0 0 6px rgb(var(--ui-highlight-rgb) / 0.35);
   }
   .home-notes li {
     @apply flex items-center gap-2 before:content-[''] before:h-1 before:w-1 before:rounded-full before:shrink-0;
@@ -582,10 +613,10 @@ body {
 @keyframes tool-glow {
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(202, 138, 4, 0.15);
+    box-shadow: 0 0 10px rgb(var(--ui-highlight-rgb) / 0.15);
   }
   50% {
-    box-shadow: 0 0 14px rgba(250, 204, 21, 0.22);
+    box-shadow: 0 0 14px rgb(var(--ui-highlight-rgb) / 0.22);
   }
 }
 

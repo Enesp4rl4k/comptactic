@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { parseRoomInput } from '../lib/roomEntry'
+import ThemeMenu from './ThemeMenu'
 
 interface Props {
   onOpenRoom: () => void
@@ -50,6 +51,10 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
         </div>
         <div className="home-bg-scrim" />
         <div className="home-bg-vignette" />
+      </div>
+
+      <div className="home-theme-menu">
+        <ThemeMenu align="right" />
       </div>
 
       <main className="home-main">

@@ -14,10 +14,10 @@ export default {
         panel2: '#1c1c1f',
         edge: '#2a2a2e',
         edge2: '#36363c',
-        // accent — Squad-like: charcoal surfaces + amber highlight
+        // accent — driven by CSS vars (see index.css + data-ui-theme)
         accent: '#52525b',
-        highlight: '#ca8a04',
-        success: '#ca8a04',
+        highlight: 'rgb(var(--ui-highlight-rgb) / <alpha-value>)',
+        success: 'rgb(var(--ui-highlight-rgb) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
