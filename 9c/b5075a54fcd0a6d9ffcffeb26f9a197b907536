@@ -1,0 +1,26 @@
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_5f55d4284fc153 12-17
+  s_ef05d5e0d2aed5::t_1f52f51db96849 122
+src/index.css
+  s_ef05d5e0d2aed5::t_7360cdff469423 453,457-460
+  s_ef05d5e0d2aed5::t_d71ebf5d5c4c2d 594-596,598-603,606,612,614,616-619,621,624,630,632,634-691,695
+  s_ef05d5e0d2aed5::t_f0ed19a680812f 277,283-284,289,292,295-304,312-314,316-317
+index.html
+  s_ef05d5e0d2aed5::t_c3c3a86e894ca1 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "9cb5075a54fcd0a6d9ffcffeb26f9a197b907536",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
