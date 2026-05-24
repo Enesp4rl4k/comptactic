@@ -1,0 +1,34 @@
+src/components/TacticalBoard.tsx
+  s_ef05d5e0d2aed5::t_d4a73bbcc2dbf6 628
+src/components/StaticMapLayer.tsx
+  s_ef05d5e0d2aed5::t_4056118b0796f6 2,48-49,62
+src/index.css
+  s_ef05d5e0d2aed5::t_66fb5605b639a6 269,299,304-305,308-309,311,318,322-323,325,328,334-335,337-338,340-341,343-344,346-347,349-354,356-357,372-375,377
+  s_ef05d5e0d2aed5::t_82cbf22a97aed4 360
+  s_ef05d5e0d2aed5::t_9bfc8e0c466fc9 359,366,369
+  s_ef05d5e0d2aed5::t_ba73485559596b 378,380,383-392
+  s_ef05d5e0d2aed5::t_f14be3b4bd39b5 522-526,528,530-531,535,537-539,541-543,546-550,553,555-560,562,564-566
+  s_ef05d5e0d2aed5::t_7a38183a421447 264,266-267,272-274,276-285,287-288,290-291,293-294,296-298,300-301,303,306,312,315,319-320,326,329-332
+  s_ef05d5e0d2aed5::t_0831f4e4aad44d 394
+index.html
+  s_ef05d5e0d2aed5::t_265035b6c18103 11,14
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_4a5720482f27c7 9-12,33-44,46-47,52,56,96-100,110-112
+  s_ef05d5e0d2aed5::t_6821598f482405 15-16,24,50-51,53-54,59-67,69-70,73-95,101-105,107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "1b3ae2e8f2bbf852def63896fce2c7765a8a9f1c",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
