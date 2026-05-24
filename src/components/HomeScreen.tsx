@@ -6,10 +6,12 @@ interface Props {
   onJoinRoom: (roomId: string) => void
 }
 
+const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`
+
 const BG_SLIDES = [
-  { src: '/home/squad-bg-1.jpg', className: 'home-bg-slide--1' },
-  { src: '/home/squad-bg-2.jpg', className: 'home-bg-slide--2' },
-  { src: '/home/squad-bg-3.jpg', className: 'home-bg-slide--3' },
+  { src: asset('home/squad-bg-hero.jpg'), className: 'home-bg-slide--1' },
+  { src: asset('home/squad-bg-1.jpg'), className: 'home-bg-slide--2' },
+  { src: asset('home/squad-bg-2.jpg'), className: 'home-bg-slide--3' },
 ] as const
 
 const NOTES = ['Live map sync', 'Line-up & vehicles', 'Host sets edit access']
@@ -49,9 +51,15 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
 
       <main className="home-main">
         <header className="home-brand">
-          <p className="home-eyebrow">Squad · tactics</p>
+          <p className="home-eyebrow">
+            <span className="home-eyebrow-mark" aria-hidden="true" />
+            <span className="home-eyebrow-muted">Squad</span>
+            <span className="home-eyebrow-sep">·</span>
+            <span className="home-eyebrow-red">Tactics</span>
+          </p>
           <h1 className="home-logo">
-            Comp<span className="home-logo-accent">Tactic</span>
+            <span className="home-logo-comp">Comp</span>
+            <span className="home-logo-accent">Tactic</span>
           </h1>
           <p className="home-kicker">Plan maps, line-ups, and briefings in one room</p>
         </header>
@@ -61,7 +69,7 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
             <h2 className="home-primary-title">New room</h2>
             <p className="home-primary-desc">You host — invite others when ready.</p>
           </div>
-          <button type="button" className="btn btn-primary home-primary-btn" onClick={onOpenRoom}>
+          <button type="button" className="home-primary-btn" onClick={onOpenRoom}>
             Open tactic room
           </button>
         </section>
