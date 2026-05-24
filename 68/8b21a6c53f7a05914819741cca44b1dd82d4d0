@@ -1,0 +1,85 @@
+public/icons/default/deployables/map_mine.svg
+  s_ef05d5e0d2aed5::t_b94cf581796cd2 1-25
+public/icons/red/deployables/map_mine.svg
+  s_ef05d5e0d2aed5::t_b94cf581796cd2 1-25
+src/components/RoomMembersModal.tsx
+  s_ef05d5e0d2aed5::t_9294476efb75f3 18
+src/lib/useLayerInfo.ts
+  s_ef05d5e0d2aed5::t_122d7a569d5daa 64
+  s_ef05d5e0d2aed5::t_109b78388b2a9e 71
+src/components/LineupGrid.tsx
+  s_ef05d5e0d2aed5::t_d6d0055a7a42d6 107
+  s_ef05d5e0d2aed5::t_fa8a9d3c21a413 17
+  s_ef05d5e0d2aed5::t_bc9b77d2d7eccf 64
+src/lib/konvaTransformMode.ts
+  s_ef05d5e0d2aed5::t_9f9d3620568c3a 13-16
+  s_ef05d5e0d2aed5::t_a2eb5b7fd3db4e 3,6-7,21
+  s_ef05d5e0d2aed5::t_4080e7352948cc 1-2,4-5,8-12,17-20
+public/icons/blue/deployables/deployable_AntiAirGun.svg
+  s_ef05d5e0d2aed5::t_92fbd2d2863532 1-24
+public/icons/default/deployables/deployable_GMG.svg
+  s_ef05d5e0d2aed5::t_b94cf581796cd2 1-20
+tailwind.config.js
+  s_ef05d5e0d2aed5::t_3c1b764086de80 17,19-20
+public/icons/red/deployables/deployable_AntiAirGun.svg
+  s_ef05d5e0d2aed5::t_92fbd2d2863532 1-24
+src/components/TacticalBoard.tsx
+  s_ef05d5e0d2aed5::t_45e522a950f336 650,666
+  s_ef05d5e0d2aed5::t_5eee619772a418 648-649,651-652,654-665
+  s_ef05d5e0d2aed5::t_042ca6342a80b8 27-32
+  s_ef05d5e0d2aed5::t_cc99e6bcfc3638 653
+  s_ef05d5e0d2aed5::t_7a5737b2be087e 1101,1103-1111
+  s_ef05d5e0d2aed5::t_6668d75bc6f548 1102
+public/icons/default/deployables/deployable_AntiAirGun.svg
+  s_ef05d5e0d2aed5::t_92fbd2d2863532 1-24
+public/icons/red/vehicles/map_jeep_antitank.svg
+  s_ef05d5e0d2aed5::t_92fbd2d2863532 1-18
+public/icons/blue/deployables/deployable_GMG.svg
+  s_ef05d5e0d2aed5::t_b94cf581796cd2 1-20
+public/icons/red/deployables/deployable_GMG.svg
+  s_ef05d5e0d2aed5::t_b94cf581796cd2 1-20
+public/icons/blue/vehicles/map_jeep_antitank.svg
+  s_ef05d5e0d2aed5::t_92fbd2d2863532 1-18
+src/App.tsx
+  s_ef05d5e0d2aed5::t_1ef6ef6518206d 682
+  s_ef05d5e0d2aed5::t_aebea98247c0bb 306-313,316
+src/data/assets.ts
+  s_ef05d5e0d2aed5::t_9c9bd904f50037 46-47
+  s_ef05d5e0d2aed5::t_952cc902c49993 36
+  s_ef05d5e0d2aed5::t_626d5215915f4c 33-34
+  s_ef05d5e0d2aed5::t_3258df5e0dc5f0 31
+public/icons/default/vehicles/map_jeep_antitank.svg
+  s_ef05d5e0d2aed5::t_92fbd2d2863532 1-18
+src/index.css
+  s_ef05d5e0d2aed5::t_b68ffac8b82d85 208,217
+  s_ef05d5e0d2aed5::t_64b67377f41651 301
+  s_ef05d5e0d2aed5::t_0643eacb1f94bd 249
+  s_ef05d5e0d2aed5::t_1e922e383d4ba6 26
+  s_ef05d5e0d2aed5::t_14a3fc268b2d23 315
+  s_ef05d5e0d2aed5::t_d052c61d35c90b 14-15
+  s_ef05d5e0d2aed5::t_41e3362694e614 44-45,48-49
+  s_ef05d5e0d2aed5::t_2bf3a3fed83135 378
+  s_ef05d5e0d2aed5::t_0a279e890b7eb0 515,518
+  s_ef05d5e0d2aed5::t_9f417a472d3048 226
+public/icons/blue/deployables/map_mine.svg
+  s_ef05d5e0d2aed5::t_b94cf581796cd2 1-25
+src/components/VehiclePanel.tsx
+  s_ef05d5e0d2aed5::t_aba3745f370ef9 60
+  s_ef05d5e0d2aed5::t_852afa4c01e214 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "688b21a6c53f7a05914819741cca44b1dd82d4d0",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
