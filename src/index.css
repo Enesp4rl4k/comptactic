@@ -261,153 +261,137 @@ body {
     }
   }
 
-  /* Landing / home — Squad tactical entry */
+  /* Landing — Squad imagery + glass panels (ui-ux-pro-max: gaming / #0F172A) */
   .home-screen {
-    @apply relative h-full flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden px-4 py-10;
-    background: #070709;
+    @apply relative min-h-full flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden px-4 py-12 sm:py-16;
+    background: #0f172a;
   }
-  .home-fx {
+  .home-bg {
     @apply pointer-events-none absolute inset-0 overflow-hidden;
   }
-  .home-grid {
-    @apply absolute inset-0 opacity-[0.14];
-    background-image:
-      linear-gradient(rgba(59, 130, 246, 0.35) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(59, 130, 246, 0.35) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 70% 65% at 50% 45%, black 20%, transparent 75%);
+  .home-bg-slides {
+    position: absolute;
+    inset: -12%;
   }
-  .home-scan {
-    @apply absolute inset-x-0 h-24 opacity-[0.07];
-    background: linear-gradient(180deg, transparent, rgba(59, 130, 246, 0.9), transparent);
-    animation: home-scan 7s linear infinite;
+  .home-bg-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(32px) saturate(1.12) brightness(0.5);
+    transform: scale(1.06);
+    opacity: 0;
+    will-change: opacity, transform;
   }
-  .home-vignette {
-    @apply absolute inset-0;
-    background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.65) 100%);
+  .home-bg-slide--1 {
+    animation: home-slide-1 21s ease-in-out infinite;
   }
-  .home-corner {
-    @apply absolute w-40 h-40 rounded-full blur-3xl opacity-30;
-    animation: home-pulse 5s ease-in-out infinite;
+  .home-bg-slide--2 {
+    animation: home-slide-2 21s ease-in-out infinite;
   }
-  .home-corner-blu {
-    @apply -top-16 -left-16;
-    background: rgba(59, 130, 246, 0.35);
+  .home-bg-slide--3 {
+    animation: home-slide-3 21s ease-in-out infinite;
   }
-  .home-corner-opf {
-    @apply -bottom-20 -right-16;
-    background: rgba(239, 68, 68, 0.28);
-    animation-delay: 2.5s;
+  .home-bg-scrim {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.88) 45%, rgba(9, 9, 11, 0.94) 100%),
+      radial-gradient(ellipse 80% 50% at 50% 20%, rgba(34, 197, 94, 0.06), transparent 55%);
   }
-  .home-crosshair {
-    @apply absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 w-48 h-48 opacity-[0.12];
+  .home-bg-vignette {
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.55);
   }
-  .home-crosshair-ring {
-    @apply absolute inset-0 rounded-full border border-zinc-400;
+  .home-main {
+    @apply relative z-10 w-full max-w-[26rem] animate-view-in;
   }
-  .home-crosshair-v,
-  .home-crosshair-h {
-    @apply absolute bg-zinc-400;
-  }
-  .home-crosshair-v {
-    @apply left-1/2 top-0 bottom-0 w-px -translate-x-1/2;
-  }
-  .home-crosshair-h {
-    @apply top-1/2 left-0 right-0 h-px -translate-y-1/2;
-  }
-  .home-compass {
-    @apply absolute top-6 right-6 w-10 h-10 rounded-full border border-edge2/80 grid place-items-center text-[10px] font-display font-bold text-zinc-500 opacity-40;
-    font-family: theme('fontFamily.display');
-  }
-  .home-panel {
-    @apply rounded-2xl border border-edge2/80 bg-panel/75 backdrop-blur-xl shadow-panel px-6 py-8 sm:px-8;
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-  .home-screen-inner {
-    @apply relative z-10 w-full max-w-3xl animate-view-in space-y-8;
+  .home-brand {
+    @apply mb-8 text-center sm:text-left;
   }
   .home-eyebrow {
-    @apply flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-2;
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-500/90 mb-3;
     font-family: theme('fontFamily.display');
   }
-  .home-eyebrow-dot {
-    @apply h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)];
-    animation: home-blink 2s ease-in-out infinite;
+  .home-logo {
+    font-family: 'Russo One', theme('fontFamily.display'), system-ui, sans-serif;
+    @apply text-[2.15rem] sm:text-[2.5rem] font-normal tracking-tight text-slate-50 leading-none;
   }
-  .home-title {
-    @apply font-display text-4xl sm:text-5xl font-bold tracking-wide text-zinc-100 mb-3;
+  .home-logo-accent {
+    @apply text-highlight;
   }
-  .home-lead {
-    @apply text-sm text-zinc-400 leading-relaxed;
+  .home-kicker {
+    @apply mt-3 text-[15px] text-slate-400 leading-relaxed max-w-[22rem] mx-auto sm:mx-0;
   }
-  .home-tags {
-    @apply flex flex-wrap gap-1.5 mt-4;
+  .home-primary {
+    @apply rounded-xl border border-white/10 bg-slate-900/70 backdrop-blur-md p-5 sm:p-6 cursor-default;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 12px 40px rgba(0, 0, 0, 0.35);
   }
-  .home-tag {
-    @apply text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border border-edge/80 text-zinc-500 bg-panel2/60;
-    font-family: theme('fontFamily.display');
+  .home-primary-copy {
+    @apply mb-5;
   }
-  .home-actions {
-    @apply mt-8 mb-7;
+  .home-primary-title {
+    @apply text-base font-semibold text-zinc-100 mb-1;
   }
-  .home-layout {
-    @apply grid gap-4 sm:grid-cols-2;
+  .home-primary-desc {
+    @apply text-sm text-zinc-500;
   }
-  .home-card {
-    @apply rounded-xl border border-edge2/70 bg-panel2/50 p-5 backdrop-blur-sm;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  .home-primary-btn {
+    @apply w-full h-10 text-sm font-semibold;
   }
-  .home-card-primary {
-    @apply border-highlight/25 bg-gradient-to-br from-highlight/10 via-panel2/40 to-panel2/30;
+  .home-divider {
+    @apply flex items-center gap-3 my-6 text-xs text-zinc-600;
   }
-  .home-card-title {
-    @apply font-display text-sm font-semibold uppercase tracking-wider text-zinc-300 mb-1;
+  .home-divider::before,
+  .home-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: theme('colors.edge');
   }
-  .home-card-desc {
-    @apply text-xs text-zinc-500 leading-relaxed mb-4;
+  .home-join-label {
+    @apply block text-sm text-zinc-400 mb-2;
   }
-  .home-feature-grid {
-    @apply grid gap-3 sm:grid-cols-3;
-  }
-  .home-feature-card {
-    @apply flex gap-3 rounded-lg border border-edge/80 bg-panel/60 px-3 py-3;
-  }
-  .home-feature-title {
-    @apply text-xs font-semibold text-zinc-200 mb-0.5;
-  }
-  .home-feature-desc {
-    @apply text-[11px] text-zinc-500 leading-snug;
-  }
-  .home-cta {
-    @apply w-full h-11 text-base gap-2 shadow-lg shadow-highlight/20;
-  }
-  .home-cta-icon {
-    @apply text-lg opacity-90;
-  }
-  .home-cta-hint {
-    @apply mt-2.5 text-center text-[11px] text-zinc-600 leading-relaxed;
+  .home-join {
+    @apply rounded-xl border border-white/10 bg-slate-900/55 backdrop-blur-sm p-4 sm:p-5;
   }
   .home-join-row {
     @apply flex gap-2;
   }
   .home-join-input {
-    @apply flex-1 min-w-0 font-mono text-xs;
+    @apply flex-1 min-w-0 font-mono text-[13px] bg-slate-950/50 border-white/10;
   }
   .home-join-btn {
-    @apply shrink-0 border-emerald-500/25 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20;
+    @apply shrink-0 px-4 h-10 border-white/10 bg-slate-800/80 text-slate-100 hover:bg-slate-700 hover:text-white cursor-pointer;
   }
   .home-join-error {
-    @apply mt-1.5 text-xs text-red-400/90;
+    @apply mt-2 text-sm text-red-400;
   }
-  .home-feature-dot {
-    @apply h-2 w-2 rounded-full bg-zinc-600 shrink-0 mt-0.5;
+  .home-notes {
+    @apply mt-10 pt-6 border-t border-edge flex flex-col gap-2 list-none p-0 m-0 text-sm text-zinc-600;
   }
-  .home-feature-dot-live {
-    @apply bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)];
-    animation: home-blink 2s ease-in-out infinite;
+  .home-notes li {
+    @apply flex items-center gap-2 before:content-[''] before:h-1 before:w-1 before:rounded-full before:bg-emerald-600/70 before:shrink-0;
   }
+  .home-attribution {
+    @apply fixed bottom-2.5 right-3 z-10 text-[10px] text-slate-600/70 pointer-events-none select-none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-bg-slide--1 {
+      opacity: 1;
+      animation: none;
+    }
+    .home-bg-slide--2,
+    .home-bg-slide--3 {
+      display: none;
+    }
+  }
+
   .sr-only {
     @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
     clip: rect(0, 0, 0, 0);
@@ -462,10 +446,6 @@ body {
   }
   .lineup-header {
     @apply flex items-center gap-3 px-4 py-2.5 border-b border-edge bg-panel/95 backdrop-blur-sm;
-  }
-
-  .home-screen-glow {
-    @apply hidden;
   }
 }
 
@@ -539,34 +519,51 @@ body {
   }
 }
 
-@keyframes home-scan {
-  0% {
-    top: -15%;
+@keyframes home-slide-1 {
+  0%,
+  28% {
+    opacity: 1;
+    transform: scale(1.06);
   }
+  33%,
   100% {
-    top: 115%;
+    opacity: 0;
+    transform: scale(1.1);
   }
 }
 
-@keyframes home-pulse {
+@keyframes home-slide-2 {
   0%,
-  100% {
-    opacity: 0.22;
-    transform: scale(1);
+  28% {
+    opacity: 0;
+    transform: scale(1.06);
   }
-  50% {
-    opacity: 0.38;
+  33%,
+  61% {
+    opacity: 1;
     transform: scale(1.08);
   }
+  66%,
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
 }
 
-@keyframes home-blink {
+@keyframes home-slide-3 {
   0%,
-  100% {
-    opacity: 1;
+  61% {
+    opacity: 0;
+    transform: scale(1.06);
   }
-  50% {
-    opacity: 0.35;
+  66%,
+  94% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
   }
 }
 

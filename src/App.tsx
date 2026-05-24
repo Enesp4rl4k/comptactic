@@ -40,7 +40,6 @@ import {
   exportPNG,
   clearLocal,
 } from './lib/persist'
-import { loadCapturePoints } from './lib/capturePoints'
 
 export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -69,19 +68,6 @@ export default function App() {
 
   const collabNotice = useBoardStore((s) => s.collabNotice)
   const clearCollabNotice = useBoardStore((s) => s.clearCollabNotice)
-
-  useEffect(() => {
-    const run = () => {
-      void loadCapturePoints()
-    }
-    const ric = window.requestIdleCallback
-    if (ric) {
-      const id = ric(run, { timeout: 2500 })
-      return () => window.cancelIdleCallback(id)
-    }
-    const t = setTimeout(run, 150)
-    return () => clearTimeout(t)
-  }, [])
 
   // load shared plan: ?s=<id> short link, then #hash, else autosave
   useEffect(() => {

@@ -1,15 +1,11 @@
 import { memo, useEffect, useRef } from 'react'
-import { Group, Image as KonvaImage, Layer, Line, Rect, Circle, Text } from 'react-konva'
+import { Group, Image as KonvaImage, Layer, Line, Rect } from 'react-konva'
 import type Konva from 'konva'
-import type { CapturePoint } from '../types'
 import { MAP_SIZE } from '../hooks/useBoardViewport'
 
 interface Props {
   bg: HTMLImageElement | null
   bgStatus: 'loading' | 'loaded' | 'failed'
-  capturePoints: CapturePoint[]
-  /** Stage zoom — simplify CP labels when zoomed out. */
-  viewScale: number
 }
 
 const BackgroundImage = memo(function BackgroundImage({ img }: { img: HTMLImageElement }) {
@@ -49,40 +45,9 @@ const GridBackground = memo(function GridBackground() {
   )
 })
 
-const CapturePointsOverlay = memo(function CapturePointsOverlay({
-  points,
-  detailed,
-}: {
-  points: CapturePoint[]
-  detailed: boolean
-}) {
-  return (
-    <>
-      {points.map((cp, i) => (
-        <Group key={cp.id} x={cp.x * MAP_SIZE} y={cp.y * MAP_SIZE} listening={false}>
-          <Circle radius={14} fill="rgba(234,179,8,0.25)" stroke="#eab308" strokeWidth={2} listening={false} perfectDrawEnabled={false} />
-          <Circle radius={4} fill="#eab308" listening={false} perfectDrawEnabled={false} />
-          {detailed && (
-            <Text
-              text={`${i + 1}. ${cp.name}`}
-              fontSize={13}
-              fill="#fde68a"
-              x={18}
-              y={-7}
-              listening={false}
-              perfectDrawEnabled={false}
-            />
-          )}
-        </Group>
-      ))}
-    </>
-  )
-})
-
-/** Map background + CP overlay; cached as one bitmap while content is static. */
-const StaticMapLayer = memo(function StaticMapLayer({ bg, bgStatus, capturePoints, viewScale }: Props) {
+/** Map background only — capture points are baked into the minimap image. */
+const StaticMapLayer = memo(function StaticMapLayer({ bg, bgStatus }: Props) {
   const layerRef = useRef<Konva.Layer>(null)
-  const detailedCp = viewScale >= 0.55
 
   useEffect(() => {
     const layer = layerRef.current
@@ -94,12 +59,11 @@ const StaticMapLayer = memo(function StaticMapLayer({ bg, bgStatus, capturePoint
       layer.batchDraw()
     })
     return () => cancelAnimationFrame(raf)
-  }, [bg, bgStatus, capturePoints, detailedCp])
+  }, [bg, bgStatus])
 
   return (
     <Layer ref={layerRef} listening={false}>
       {bg && bgStatus === 'loaded' ? <BackgroundImage img={bg} /> : <GridBackground />}
-      {capturePoints.length > 0 && <CapturePointsOverlay points={capturePoints} detailed={detailedCp} />}
     </Layer>
   )
 })

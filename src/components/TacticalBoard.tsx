@@ -22,9 +22,6 @@ import { simplifyPoints } from '../lib/simplify'
 import { MAP_BY_ID } from '../data/maps'
 import { ASSET_BY_ID } from '../data/assets'
 import { useBoardViewport, MAP_SIZE } from '../hooks/useBoardViewport'
-import { useCapturePointsLayer } from '../hooks/useCapturePointsLayer'
-import { filterCapturePoints } from '../lib/cpOverlay'
-import CaptureOverlayBar, { useCpOverlayPrefs } from './CaptureOverlayBar'
 import StaticMapLayer from './StaticMapLayer'
 import { useRafThrottle } from '../lib/useRafThrottle'
 import type { BoardElement, IconElement, PolyElement, RangeElement, ToolId } from '../types'
@@ -130,12 +127,6 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const setEditingLock = useBoardStore((s) => s.setEditingLock)
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
-  const rawCapturePoints = useCapturePointsLayer(layerId)
-  const [cpPrefs, setCpPrefs] = useCpOverlayPrefs()
-  const capturePoints = useMemo(
-    () => filterCapturePoints(rawCapturePoints, cpPrefs),
-    [rawCapturePoints, cpPrefs],
-  )
   const pendingRangeMeters = useBoardStore((s) => s.pendingRangeMeters)
   const placeRangeRing = useBoardStore((s) => s.placeRangeRing)
   const mapSizeMeters = resolveMapSizeMeters(mapId, customMapMeta)
@@ -634,7 +625,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
                   : 'default',
         }}
       >
-        <StaticMapLayer bg={bg} bgStatus={bgStatus} capturePoints={capturePoints} viewScale={view.scale} />
+        <StaticMapLayer bg={bg} bgStatus={bgStatus} />
 
         {/* elements layer (memoized children -> not redrawn while drafting) */}
         <Layer>
@@ -670,7 +661,6 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         </Layer>
       </Stage>
 
-      {!readOnly && <CaptureOverlayBar layerId={layerId} prefs={cpPrefs} onChange={setCpPrefs} />}
       {!readOnly && pendingRangeMeters != null && (
         <div className="absolute top-3 right-3 z-10 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">
           Click map to place <strong>{pendingRangeMeters} m</strong> ring · Esc to cancel
