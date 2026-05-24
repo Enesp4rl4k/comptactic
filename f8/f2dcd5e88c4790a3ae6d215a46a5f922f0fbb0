@@ -1,0 +1,110 @@
+src/components/PlayerPool.tsx
+  s_ef05d5e0d2aed5::t_420b94a2edf9c3 89,93
+src/components/LineupGrid.tsx
+  s_ef05d5e0d2aed5::t_13f7c95fe7b348 174,178
+  s_ef05d5e0d2aed5::t_29616ae975aff4 253,257
+vite.config.ts
+  s_ef05d5e0d2aed5::t_0b5163959baf43 7
+src/components/SlidesBar.tsx
+  s_ef05d5e0d2aed5::t_7cd7315367ee26 1,12,15,21-23,25,27-36,38-50,52,54,56-58,60,62-68,71,73-90,92-107
+src/components/TacticalBoard.tsx
+  s_ef05d5e0d2aed5::t_8d285e255c61a3 124,126,129
+  s_ef05d5e0d2aed5::t_0b0ede967ec96a 31-43
+  s_ef05d5e0d2aed5::t_a4117361a379e8 170
+  s_ef05d5e0d2aed5::t_7eb47d3a9a9eb2 355
+  s_ef05d5e0d2aed5::t_ad78b09fff794f 631
+  s_ef05d5e0d2aed5::t_e8a8913acecee6 536-544
+  s_ef05d5e0d2aed5::t_a1f3b91fca7ceb 1016-1018
+  s_ef05d5e0d2aed5::t_cea1bec647a636 241-246
+  s_ef05d5e0d2aed5::t_6ae242eab8eb05 454
+  s_ef05d5e0d2aed5::t_9cc6aef4a8b580 20
+  s_ef05d5e0d2aed5::t_080b8e2b9503a2 570,574-577
+  s_ef05d5e0d2aed5::t_3761e75201fab1 806,811,818,822
+src/components/MapPicker.tsx
+  s_ef05d5e0d2aed5::t_459a10a4c85a7a 1,6-7
+  s_ef05d5e0d2aed5::t_43e8c6f199281b 206-208
+  s_ef05d5e0d2aed5::t_5453e0cafea222 4-5,10-11,13-15,31-42,45-48,52-68,77,82-124
+  s_ef05d5e0d2aed5::t_73944ff10fdb31 143-182,185,190
+  s_ef05d5e0d2aed5::t_fb6d57b13238a9 16-18,21-29
+src/lib/collab.ts
+  s_ef05d5e0d2aed5::t_fe6f9a8fb63092 3,5-6,10-29,31,34-37,52-62,64-89,93-94,100-103,105-106,113,115-128,132-133,136-166,170,174,178-182,191,198
+src/lib/customMap.ts
+  s_ef05d5e0d2aed5::t_5e50599737e4ef 1-99
+src/store/useBoardStore.ts
+  s_ef05d5e0d2aed5::t_9604a7023de55d 295-298
+  s_ef05d5e0d2aed5::t_f9cff38abf9ebd 4,9
+  s_ef05d5e0d2aed5::t_33f79b1c611311 125-129
+  s_ef05d5e0d2aed5::t_879115b85f51cf 258-260,262-282
+  s_ef05d5e0d2aed5::t_24c543efbed2ae 3
+  s_ef05d5e0d2aed5::t_34734e80130a3f 327,330-337,340-378
+  s_ef05d5e0d2aed5::t_22cddf67a37d20 174
+  s_ef05d5e0d2aed5::t_27ccb5c31770fa 1019-1033,1036-1050,1052-1054
+  s_ef05d5e0d2aed5::t_40299a67509abe 924,927-977
+  s_ef05d5e0d2aed5::t_b7b81d5b76d43e 925-926
+  s_ef05d5e0d2aed5::t_5acc4b5710fe14 1003
+  s_ef05d5e0d2aed5::t_fc5806b3579993 180-183
+  s_ef05d5e0d2aed5::t_add3fc577c88c2 411-421
+src/components/BriefingMode.tsx
+  s_ef05d5e0d2aed5::t_f8e8913ccb0685 60,63-67
+src/types.ts
+  s_ef05d5e0d2aed5::t_849c3be3da82cd 190-191
+  s_ef05d5e0d2aed5::t_f2c87e6d12c85c 200-208,218
+src/lib/recentMaps.ts
+  s_ef05d5e0d2aed5::t_9d3935518cb63d 1-23
+src/components/RosterPanel.tsx
+  s_ef05d5e0d2aed5::t_259d478766f8f0 98-102,110
+  s_ef05d5e0d2aed5::t_cd9a850ccfd395 41-44
+  s_ef05d5e0d2aed5::t_6133dbad13fe4a 136-172,174,176-178,180
+  s_ef05d5e0d2aed5::t_a14d83438646df 40
+  s_ef05d5e0d2aed5::t_c7e0e91aa278e4 97,103-109,111-130
+  s_ef05d5e0d2aed5::t_65a37663e3feff 9
+  s_ef05d5e0d2aed5::t_e91fc997a62af2 73,78
+  s_ef05d5e0d2aed5::t_3c1d3dc7904e3b 54-60
+src/lib/exportSlides.ts
+  s_ef05d5e0d2aed5::t_c38df68e94700d 40
+  s_ef05d5e0d2aed5::t_b9523096f8bae0 58
+  s_ef05d5e0d2aed5::t_1b70b0488b5562 76,80-85
+src/lib/persist.ts
+  s_ef05d5e0d2aed5::t_38a73f12b22f53 20-23
+.github/workflows/deploy.yml
+  s_ef05d5e0d2aed5::t_cb81b0d1e3f58e 1-44
+src/App.tsx
+  s_ef05d5e0d2aed5::t_d5d51596d7e201 98-100
+  s_ef05d5e0d2aed5::t_94483b9a16a0a6 301-305
+  s_ef05d5e0d2aed5::t_80cbf72d652fa2 224-229
+  s_ef05d5e0d2aed5::t_ce247d0110983c 32
+  s_ef05d5e0d2aed5::t_2656077fc7b7bc 206-207,209-223,230-231
+  s_ef05d5e0d2aed5::t_e188857ff80ac5 340-349,351-353,357-368,370
+  s_ef05d5e0d2aed5::t_89b6a6d1723ee3 47
+  s_ef05d5e0d2aed5::t_85358fb22601e9 172-185
+  s_ef05d5e0d2aed5::t_b70cfbde36741c 155,159,161
+  s_ef05d5e0d2aed5::t_0798323bc147ab 208
+  s_ef05d5e0d2aed5::t_75e7a6e91b7d30 319-323
+  s_ef05d5e0d2aed5::t_940983e9ed2a5f 1
+  s_ef05d5e0d2aed5::t_61cab9bb472e50 76
+  s_ef05d5e0d2aed5::t_84187d32f17dfe 246
+  s_ef05d5e0d2aed5::t_f3a1ae617b16b5 528-556
+  s_ef05d5e0d2aed5::t_53b541f60a70f6 79-82,84-85,87,90-96,102-140,143-144
+  s_ef05d5e0d2aed5::t_fb79ec292a50bf 148
+  s_ef05d5e0d2aed5::t_1a4e3a3b1133ad 308-309,316,318
+  s_ef05d5e0d2aed5::t_d91332661db60b 245,248,252,258-268
+  s_ef05d5e0d2aed5::t_3e8cb3e25e524f 21
+  s_ef05d5e0d2aed5::t_a7349ef19a7ded 385,390,393-394,396,398
+  s_ef05d5e0d2aed5::t_951e10d36f9240 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "f8f2dcd5e88c4790a3ae6d215a46a5f922f0fbb0",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
