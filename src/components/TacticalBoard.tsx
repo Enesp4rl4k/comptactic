@@ -21,9 +21,15 @@ import { importCustomMap, isImageFile } from '../lib/customMap'
 import { simplifyPoints } from '../lib/simplify'
 import { MAP_BY_ID } from '../data/maps'
 import { ASSET_BY_ID } from '../data/assets'
-import type { BoardElement, IconElement, PolyElement, ToolId } from '../types'
+import { useBoardViewport, MAP_SIZE } from '../hooks/useBoardViewport'
+import { useCapturePointsLayer } from '../hooks/useCapturePointsLayer'
+import { filterCapturePoints } from '../lib/cpOverlay'
+import CaptureOverlayBar, { useCpOverlayPrefs } from './CaptureOverlayBar'
+import StaticMapLayer from './StaticMapLayer'
+import { useRafThrottle } from '../lib/useRafThrottle'
+import type { BoardElement, IconElement, PolyElement, RangeElement, ToolId } from '../types'
 
-export const MAP_SIZE = 1024
+export { MAP_SIZE }
 const PEN_MIN_DIST = 3 // stage units between captured freehand points
 const GRID_STEP = MAP_SIZE / 32 // snap-to-grid increment
 const snapVal = (v: number) => Math.round(v / GRID_STEP) * GRID_STEP
@@ -70,7 +76,7 @@ function commitPointsDrag(node: Konva.Node, el: { id: string }, points: number[]
 }
 
 interface Draft {
-  type: 'arrow' | 'line' | 'pen' | 'measure' | 'rect' | 'circle'
+  type: 'arrow' | 'line' | 'pen' | 'measure' | 'rect' | 'circle' | 'range'
   points: number[]
 }
 
@@ -92,8 +98,6 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   // throttle outgoing presence cursor updates
   const lastCursorRef = useRef(0)
 
-  const [size, setSize] = useState({ w: 800, h: 600 })
-  const [view, setView] = useState({ x: 0, y: 0, scale: 1 })
   const [draft, setDraft] = useState<Draft | null>(null)
   // in-progress zone polygon: committed vertices + live cursor position
   const [poly, setPoly] = useState<{ pts: number[]; cx: number; cy: number } | null>(null)
@@ -126,7 +130,18 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
   const setEditingLock = useBoardStore((s) => s.setEditingLock)
   const map = mapId ? MAP_BY_ID[mapId] : null
   const layer = map?.layers.find((l) => l.id === layerId) ?? null
+  const rawCapturePoints = useCapturePointsLayer(layerId)
+  const [cpPrefs, setCpPrefs] = useCpOverlayPrefs()
+  const capturePoints = useMemo(
+    () => filterCapturePoints(rawCapturePoints, cpPrefs),
+    [rawCapturePoints, cpPrefs],
+  )
+  const pendingRangeMeters = useBoardStore((s) => s.pendingRangeMeters)
+  const placeRangeRing = useBoardStore((s) => s.placeRangeRing)
   const mapSizeMeters = resolveMapSizeMeters(mapId, customMapMeta)
+  const mapKey = `${mapId ?? ''}:${layerId ?? ''}:${customImage ?? ''}`
+  const { size, view, setView } = useBoardViewport(containerRef, mapKey)
+  const pixelRatio = useMemo(() => Math.min(window.devicePixelRatio || 1, 2), [])
   const [bg, bgStatus] = useImage(customImage ?? layer?.image ?? null)
   const hasBg = Boolean(customImage || layer)
 
@@ -147,27 +162,6 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     (id: string, patch: Partial<BoardElement>, commit?: boolean) => updateElement(id, patch, commit),
     [updateElement],
   )
-
-  // --- responsive sizing ---
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }))
-    ro.observe(el)
-    setSize({ w: el.clientWidth, h: el.clientHeight })
-    return () => ro.disconnect()
-  }, [])
-
-  // --- fit map to view when map changes ---
-  useEffect(() => {
-    if (!size.w) return
-    const scale = Math.min(size.w / MAP_SIZE, size.h / MAP_SIZE) * 0.92
-    setView({
-      x: (size.w - MAP_SIZE * scale) / 2,
-      y: (size.h - MAP_SIZE * scale) / 2,
-      scale,
-    })
-  }, [mapId, customImage, size.w, size.h])
 
   // --- keyboard shortcuts ---
   useEffect(() => {
@@ -212,12 +206,13 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         setSelection([])
         setDraft(null)
         setPoly(null)
+        useBoardStore.getState().setPendingRangeMeters(null)
         setTool('select')
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         // single-key tool shortcuts
         const TOOL_KEYS: Record<string, ToolId> = {
           v: 'select', a: 'arrow', l: 'line', p: 'pen', r: 'rect',
-          c: 'circle', z: 'zone', t: 'text', m: 'measure', g: 'ping',
+          c: 'circle', o: 'range', z: 'zone', t: 'text', m: 'measure', g: 'ping',
         }
         const next = TOOL_KEYS[e.key.toLowerCase()]
         if (next) {
@@ -361,6 +356,10 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
     // Click-to-place: an armed palette asset drops at the cursor and stays armed
     // so multiple can be placed; right-click/Escape/select tool cancels it.
+    if (pendingRangeMeters != null) {
+      placeRangeRing(relPointer().x, relPointer().y, pendingRangeMeters)
+      return
+    }
     if (placingAssetId) {
       placeAsset(placingAssetId, relPointer())
       return
@@ -405,10 +404,44 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
     }
   }
 
+  const moveEvtRef = useRef<Konva.KonvaEventObject<MouseEvent> | undefined>(undefined)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+
+  const flushDraftMove = useRafThrottle(() => {
+    const e = moveEvtRef.current
+    const d = draftRef.current
+    if (!d) return
+    const p = relPointer()
+    if (d.type === 'pen') {
+      const last = lastPenRef.current
+      if (last && Math.hypot(p.x - last.x, p.y - last.y) < PEN_MIN_DIST) return
+      lastPenRef.current = p
+      setDraft((prev) => (prev ? { ...prev, points: [...prev.points, p.x, p.y] } : prev))
+      return
+    }
+    const x1 = d.points[0]
+    const y1 = d.points[1]
+    const shift = e?.evt.shiftKey
+    let end = { x: p.x, y: p.y }
+    if (shift && (d.type === 'line' || d.type === 'arrow' || d.type === 'measure')) {
+      const dist = Math.hypot(p.x - x1, p.y - y1)
+      const step = Math.PI / 4
+      const ang = Math.round(Math.atan2(p.y - y1, p.x - x1) / step) * step
+      end = { x: x1 + Math.cos(ang) * dist, y: y1 + Math.sin(ang) * dist }
+    } else if (shift && d.type === 'rect') {
+      const s = Math.max(Math.abs(p.x - x1), Math.abs(p.y - y1))
+      end = { x: x1 + Math.sign(p.x - x1) * s, y: y1 + Math.sign(p.y - y1) * s }
+    } else if (useBoardStore.getState().snapToGrid) {
+      end = { x: snapVal(p.x), y: snapVal(p.y) }
+    }
+    setDraft((prev) => (prev ? { ...prev, points: [prev.points[0], prev.points[1], end.x, end.y] } : prev))
+  })
+
   const onMouseMove = (e?: Konva.KonvaEventObject<MouseEvent>) => {
     if (!readOnly) {
       const now = Date.now()
-      if (now - lastCursorRef.current > 45) {
+      if (now - lastCursorRef.current > 80) {
         lastCursorRef.current = now
         const p = relPointer()
         usePresence.getState().setCursor(p.x, p.y)
@@ -422,32 +455,8 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       return
     }
     if (!draft) return
-    const p = relPointer()
-    if (draft.type === 'pen') {
-      const last = lastPenRef.current
-      if (last && Math.hypot(p.x - last.x, p.y - last.y) < PEN_MIN_DIST) return
-      lastPenRef.current = p
-      setDraft((d) => (d ? { ...d, points: [...d.points, p.x, p.y] } : d))
-    } else {
-      const x1 = draft.points[0]
-      const y1 = draft.points[1]
-      const shift = e?.evt.shiftKey
-      let end = { x: p.x, y: p.y }
-      if (shift && (draft.type === 'line' || draft.type === 'arrow' || draft.type === 'measure')) {
-        // Constrain straight tools to 45° angle increments.
-        const dist = Math.hypot(p.x - x1, p.y - y1)
-        const step = Math.PI / 4
-        const ang = Math.round(Math.atan2(p.y - y1, p.x - x1) / step) * step
-        end = { x: x1 + Math.cos(ang) * dist, y: y1 + Math.sin(ang) * dist }
-      } else if (shift && draft.type === 'rect') {
-        // Constrain rectangle to a square.
-        const s = Math.max(Math.abs(p.x - x1), Math.abs(p.y - y1))
-        end = { x: x1 + Math.sign(p.x - x1) * s, y: y1 + Math.sign(p.y - y1) * s }
-      } else if (useBoardStore.getState().snapToGrid) {
-        end = { x: snapVal(p.x), y: snapVal(p.y) }
-      }
-      setDraft((d) => (d ? { ...d, points: [d.points[0], d.points[1], end.x, end.y] } : d))
-    }
+    moveEvtRef.current = e
+    flushDraftMove()
   }
 
   const onMouseUp = () => {
@@ -479,6 +488,21 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
       const r = Math.hypot(x2 - x1, y2 - y1)
       if (r < 4) return
       addElement({ type: 'circle', x: x1, y: y1, radius: r, team, color: drawColor, rotation: 0, rosterSquadId: squadId } as Omit<BoardElement, 'id' | 'z'>)
+    } else if (d.type === 'range') {
+      const [x1, y1, x2, y2] = d.points
+      const r = Math.hypot(x2 - x1, y2 - y1)
+      if (r < 4) return
+      const rangeMeters = mapSizeMeters ? Math.round((r / MAP_SIZE) * mapSizeMeters) : Math.round(r)
+      addElement({
+        type: 'range',
+        x: x1,
+        y: y1,
+        radius: r,
+        rangeMeters,
+        team,
+        color,
+        rotation: 0,
+      } as Omit<BoardElement, 'id' | 'z'>)
     } else if (d.type === 'pen') {
       if (d.points.length < 4) return
       const pts = simplifyPoints(d.points, 2)
@@ -582,6 +606,7 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         ref={stageRef}
         width={size.w}
         height={size.h}
+        pixelRatio={pixelRatio}
         x={view.x}
         y={view.y}
         scaleX={view.scale}
@@ -597,19 +622,19 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         onDragEnd={(e) => {
           if (e.target === stageRef.current) setView((v) => ({ ...v, x: e.target.x(), y: e.target.y() }))
         }}
-        style={{ cursor: readOnly ? 'grab' : placingAssetId ? 'copy' : isDrawingTool ? 'crosshair' : 'default' }}
+        style={{
+          cursor: readOnly
+            ? 'grab'
+            : pendingRangeMeters != null
+              ? 'crosshair'
+              : placingAssetId
+                ? 'copy'
+                : isDrawingTool
+                  ? 'crosshair'
+                  : 'default',
+        }}
       >
-        {/* base layer: background + capture points (static) */}
-        <Layer listening={false}>
-          {bg && bgStatus === 'loaded' ? <BackgroundImage img={bg} /> : <GridBackground />}
-          {layer?.capturePoints?.map((cp, i) => (
-            <Group key={cp.id} x={cp.x * MAP_SIZE} y={cp.y * MAP_SIZE}>
-              <Circle radius={14} fill="rgba(234,179,8,0.25)" stroke="#eab308" strokeWidth={2} />
-              <Circle radius={4} fill="#eab308" />
-              <Text text={`${i + 1}. ${cp.name}`} fontSize={13} fill="#fde68a" x={18} y={-7} />
-            </Group>
-          ))}
-        </Layer>
+        <StaticMapLayer bg={bg} bgStatus={bgStatus} capturePoints={capturePoints} viewScale={view.scale} />
 
         {/* elements layer (memoized children -> not redrawn while drafting) */}
         <Layer>
@@ -645,6 +670,12 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
         </Layer>
       </Stage>
 
+      {!readOnly && <CaptureOverlayBar layerId={layerId} prefs={cpPrefs} onChange={setCpPrefs} />}
+      {!readOnly && pendingRangeMeters != null && (
+        <div className="absolute top-3 right-3 z-10 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100">
+          Click map to place <strong>{pendingRangeMeters} m</strong> ring · Esc to cancel
+        </div>
+      )}
       {!readOnly && <SelectionBar />}
 
       {/* zoom controls */}
@@ -770,35 +801,6 @@ function Slider({
   )
 }
 
-/** Draws the background image contained within the MAP_SIZE square, preserving aspect. */
-function BackgroundImage({ img }: { img: HTMLImageElement }) {
-  const ar = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1
-  let w = MAP_SIZE
-  let h = MAP_SIZE
-  if (ar >= 1) h = MAP_SIZE / ar
-  else w = MAP_SIZE * ar
-  return <KonvaImage image={img} width={w} height={h} x={(MAP_SIZE - w) / 2} y={(MAP_SIZE - h) / 2} />
-}
-
-function GridBackground() {
-  const lines = []
-  const step = MAP_SIZE / 16
-  for (let i = 0; i <= 16; i++) {
-    const p = i * step
-    lines.push(
-      <Line key={'h' + i} points={[0, p, MAP_SIZE, p]} stroke="#1e2530" strokeWidth={1} />,
-      <Line key={'v' + i} points={[p, 0, p, MAP_SIZE]} stroke="#1e2530" strokeWidth={1} />,
-    )
-  }
-  return (
-    <Group>
-      <Rect width={MAP_SIZE} height={MAP_SIZE} fill="#10151c" />
-      {lines}
-      <Rect width={MAP_SIZE} height={MAP_SIZE} stroke="#2a3340" strokeWidth={2} />
-    </Group>
-  )
-}
-
 function DraftView({
   draft,
   color,
@@ -834,6 +836,17 @@ function DraftView({
   if (draft.type === 'circle') {
     const [x1, y1, x2, y2] = draft.points
     return <Circle x={x1} y={y1} radius={Math.hypot(x2 - x1, y2 - y1)} stroke={color} strokeWidth={strokeWidth} />
+  }
+  if (draft.type === 'range') {
+    const [x1, y1, x2, y2] = draft.points
+    const r = Math.hypot(x2 - x1, y2 - y1)
+    const label = formatMeasure(r, mapSizeMeters)
+    return (
+      <>
+        <Circle x={x1} y={y1} radius={r} stroke={color} strokeWidth={2} dash={[10, 8]} fill={color + '18'} />
+        <Text x={x1 + 8} y={y1 - 20} text={label} fontSize={14} fontStyle="bold" fill={color} />
+      </>
+    )
   }
   return null
 }
@@ -959,6 +972,34 @@ const ElementView = memo(function ElementView({ el, selectable, onSelect, onChan
           change({ x: node.x(), y: node.y(), radius: Math.max(6, el.radius * s) } as Partial<BoardElement>)
         }}
       />
+    )
+  }
+
+  if (el.type === 'range') {
+    const ring = el as RangeElement
+    const label =
+      ring.rangeMeters >= 1000 ? `${(ring.rangeMeters / 1000).toFixed(1)} km` : `${ring.rangeMeters} m`
+    return (
+      <Group
+        {...common}
+        x={ring.x}
+        y={ring.y}
+        onDragEnd={(e) => commitXYDrag(e.target, ring, change)}
+        onTransformEnd={(e) => {
+          const node = e.target
+          const s = node.scaleX()
+          node.scaleX(1)
+          node.scaleY(1)
+          const radius = Math.max(6, ring.radius * s)
+          const st = useBoardStore.getState()
+          const meters = resolveMapSizeMeters(st.mapId, st.customMapMeta)
+          const rangeMeters = meters ? Math.round((radius / MAP_SIZE) * meters) : Math.round(radius)
+          change({ x: node.x(), y: node.y(), radius, rangeMeters } as Partial<BoardElement>)
+        }}
+      >
+        <Circle radius={ring.radius} stroke={ring.color} strokeWidth={2} dash={[10, 8]} fill={ring.color + '18'} />
+        <Text x={8} y={-20} text={label} fontSize={14} fontStyle="bold" fill={ring.color} listening={false} />
+      </Group>
     )
   }
 

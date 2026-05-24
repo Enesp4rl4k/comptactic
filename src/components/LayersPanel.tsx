@@ -9,6 +9,7 @@ const TYPE_GLYPH: Record<BoardElement['type'], string> = {
   line: '╱',
   pen: '∿',
   measure: '↔',
+  range: '◉',
   rect: '▭',
   circle: '◯',
   zone: '⬠',
@@ -49,7 +50,7 @@ export default function LayersPanel() {
   }
 
   return (
-    <div className="absolute top-3 left-3 z-10 w-60 max-h-[70%] flex flex-col rounded-lg border border-edge bg-panel2/95 shadow-lg backdrop-blur">
+    <div className="absolute top-3 left-3 z-10 float-panel w-60 max-h-[70%] flex flex-col">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-edge">
         <span className="text-xs font-semibold tracking-wide text-gray-300">LAYERS</span>
         <span className="text-[10px] text-gray-500">{list.length}</span>

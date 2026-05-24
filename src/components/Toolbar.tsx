@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { IconTrash } from './ui/Icons'
+import TeamSlider from './TeamSlider'
 import { useBoardStore } from '../store/useBoardStore'
-import type { ToolId, Team } from '../types'
+import type { ToolId } from '../types'
 
 const TOOLS: { id: ToolId; label: string; glyph: string; key: string }[] = [
   { id: 'select', label: 'Select / Move', glyph: '⭖', key: 'V' },
@@ -12,32 +14,43 @@ const TOOLS: { id: ToolId; label: string; glyph: string; key: string }[] = [
   { id: 'zone', label: 'Zone — click corners, double-click / Enter to close', glyph: '⬠', key: 'Z' },
   { id: 'text', label: 'Text', glyph: 'T', key: 'T' },
   { id: 'measure', label: 'Measure distance', glyph: '📏', key: 'M' },
+  { id: 'range', label: 'Range ring (drag radius, map scale)', glyph: '◉', key: 'O' },
   { id: 'ping', label: 'Ping — click to flash a marker for everyone', glyph: '◎', key: 'G' },
 ]
 
-const TEAMS: { id: Team; label: string; color: string }[] = [
-  { id: 'blufor', label: 'BLUFOR', color: '#3b82f6' },
-  { id: 'opfor', label: 'OPFOR', color: '#ef4444' },
-  { id: 'neutral', label: 'Neutral', color: '#eab308' },
+const RANGE_PRESETS: { label: string; meters: number }[] = [
+  { label: 'FOB 150m', meters: 150 },
+  { label: 'FOB 300m', meters: 300 },
+  { label: '82mm ~400m', meters: 400 },
+  { label: '120mm ~600m', meters: 600 },
 ]
 
 export default function Toolbar() {
-  const { tool, setTool, team, setTeam, strokeWidth, setStrokeWidth, snapToGrid, toggleSnap, undo, redo, clearBoard } =
-    useBoardStore()
+  const {
+    tool,
+    setTool,
+    team,
+    setTeam,
+    strokeWidth,
+    setStrokeWidth,
+    snapToGrid,
+    toggleSnap,
+    undo,
+    redo,
+    clearBoard,
+    pendingRangeMeters,
+    setPendingRangeMeters,
+  } = useBoardStore()
 
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 bg-panel border-b border-edge">
-      <div className="flex gap-1">
+    <div className="toolbar-rail">
+      <div className="flex gap-1 shrink-0">
         {TOOLS.map((t) => (
           <button
             key={t.id}
             title={`${t.label} (${t.key})`}
             onClick={() => setTool(t.id)}
-            className={`relative h-9 w-9 rounded-md text-base grid place-items-center border transition-colors cursor-pointer ${
-              tool === t.id
-                ? 'bg-accent border-accent text-white'
-                : 'bg-panel2 border-edge text-gray-400 hover:bg-edge hover:text-white'
-            }`}
+            className={`tool-btn ${tool === t.id ? 'tool-btn-active' : ''}`}
           >
             {t.glyph}
             <span
@@ -53,25 +66,32 @@ export default function Toolbar() {
 
       <Divider />
 
-      <div className="flex gap-1">
-        {TEAMS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTeam(t.id)}
-            className={`px-2.5 h-9 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
-              team === t.id ? 'text-white' : 'text-gray-400 hover:text-white'
-            }`}
-            style={{
-              background: team === t.id ? t.color : '#1e2430',
-              borderColor: team === t.id ? t.color : '#2b3340',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TeamSlider team={team} onChange={setTeam} />
 
       <Divider />
+
+      {(tool === 'range' || pendingRangeMeters != null) && (
+        <>
+          <div className="flex gap-1 flex-wrap max-w-[220px]">
+            {RANGE_PRESETS.map((p) => (
+              <button
+                key={p.meters}
+                type="button"
+                title={`Click map to place ${p.meters} m ring`}
+                onClick={() => setPendingRangeMeters(p.meters)}
+                className={`h-7 px-2 rounded text-[10px] font-medium border cursor-pointer ${
+                  pendingRangeMeters === p.meters
+                    ? 'bg-accent border-accent text-white'
+                    : 'bg-panel2 border-edge text-gray-400 hover:text-white'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <Divider />
+        </>
+      )}
 
       <ColorMenu />
 
@@ -112,7 +132,7 @@ export default function Toolbar() {
           title="Clear board"
           danger
         >
-          🗑
+          <IconTrash size={15} />
         </ActionBtn>
       </div>
     </div>
@@ -120,7 +140,7 @@ export default function Toolbar() {
 }
 
 function Divider() {
-  return <div className="h-6 w-px bg-edge" />
+  return <div className="toolbar-divider" />
 }
 
 // Inline color strip: one-click palette swatches + a "+" popover for custom

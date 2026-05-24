@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import { loadCachedImage, peekCachedImage } from './imageCache'
 
 type Status = 'loading' | 'loaded' | 'failed'
 
-/** Minimal image loader for Konva. Returns the element only once decoded. */
+/** Minimal image loader for Konva. Uses a shared decode cache per URL. */
 export function useImage(src: string | null): [HTMLImageElement | null, Status] {
-  const [img, setImg] = useState<HTMLImageElement | null>(null)
-  const [status, setStatus] = useState<Status>('loading')
+  const cached = src ? peekCachedImage(src) : null
+  const [img, setImg] = useState<HTMLImageElement | null>(cached)
+  const [status, setStatus] = useState<Status>(cached ? 'loaded' : src ? 'loading' : 'failed')
 
   useEffect(() => {
     if (!src) {
@@ -13,21 +15,25 @@ export function useImage(src: string | null): [HTMLImageElement | null, Status] 
       setStatus('failed')
       return
     }
-    setStatus('loading')
-    const image = new window.Image()
-    image.crossOrigin = 'anonymous'
-    let active = true
-    image.onload = () => {
-      if (!active) return
-      setImg(image)
+    const hit = peekCachedImage(src)
+    if (hit) {
+      setImg(hit)
       setStatus('loaded')
+      return
     }
-    image.onerror = () => {
-      if (!active) return
-      setImg(null)
-      setStatus('failed')
-    }
-    image.src = src
+    let active = true
+    setStatus('loading')
+    loadCachedImage(src)
+      .then((image) => {
+        if (!active) return
+        setImg(image)
+        setStatus('loaded')
+      })
+      .catch(() => {
+        if (!active) return
+        setImg(null)
+        setStatus('failed')
+      })
     return () => {
       active = false
     }

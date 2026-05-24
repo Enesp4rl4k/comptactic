@@ -17,6 +17,10 @@ export interface CollabBoardPayload {
   activeSlideId: string
   boards?: BoardSnapshot['boards']
   activeKey?: string
+  /** Deleted element ids → tombstone rev (remote wins when tombstone > local element rev). */
+  elementTombstones?: Record<string, number>
+  /** When true, inactive slides omit elements (merge keeps local). */
+  light?: true
 }
 
 export interface CollabRosterPayload {
@@ -57,6 +61,7 @@ export function createNewRoom(): string {
   url.hash = ''
   url.searchParams.set('room', room)
   history.replaceState(null, '', url.toString())
+  localStorage.setItem('ct:host:' + room, '1')
   return room
 }
 
@@ -90,8 +95,8 @@ export function rosterFromSnapshot(snap: BoardSnapshot): CollabRosterPayload {
 }
 
 export interface CollabHandle {
-  broadcastBoard: (board: CollabBoardPayload) => void
-  broadcastRoster: (roster: CollabRosterPayload) => void
+  broadcastBoard: (board: CollabBoardPayload, opts?: { urgent?: boolean }) => void
+  broadcastRoster: (roster: CollabRosterPayload, opts?: { urgent?: boolean }) => void
   stop: () => void
 }
 
@@ -104,6 +109,15 @@ export function startCollab(
 ): CollabHandle {
   let lastBoardVersion = 0
   let lastRosterVersion = 0
+  let helloReplyTimer: ReturnType<typeof setTimeout> | undefined
+  let boardSendTimer: ReturnType<typeof setTimeout> | undefined
+  let rosterSendTimer: ReturnType<typeof setTimeout> | undefined
+  let pendingBoard: CollabBoardPayload | null = null
+  let pendingRoster: CollabRosterPayload | null = null
+  let lastBoardSendAt = 0
+  let lastRosterSendAt = 0
+  const MIN_BOARD_MS = 90
+  const MIN_ROSTER_MS = 180
 
   const bc = 'BroadcastChannel' in window ? new BroadcastChannel('comptactic:room:' + roomId) : null
   const channel = supabase
@@ -115,7 +129,10 @@ export function startCollab(
     channel?.send({ type: 'broadcast', event: 'collab', payload: msg })
   }
 
-  const broadcastBoard = (board: CollabBoardPayload) => {
+  const flushBoardSend = (board: CollabBoardPayload) => {
+    lastBoardSendAt = Date.now()
+    pendingBoard = null
+    boardSendTimer = undefined
     send({
       type: 'sync-board',
       sender: clientId,
@@ -124,13 +141,35 @@ export function startCollab(
     })
   }
 
-  const broadcastRoster = (roster: CollabRosterPayload) => {
+  const flushRosterSend = (roster: CollabRosterPayload) => {
+    lastRosterSendAt = Date.now()
+    pendingRoster = null
+    rosterSendTimer = undefined
     send({ type: 'sync-roster', sender: clientId, version: Date.now(), roster })
   }
 
+  const broadcastBoard = (board: CollabBoardPayload, opts?: { urgent?: boolean }) => {
+    pendingBoard = board
+    const delay = opts?.urgent ? 0 : Math.max(0, MIN_BOARD_MS - (Date.now() - lastBoardSendAt))
+    clearTimeout(boardSendTimer)
+    if (delay === 0) flushBoardSend(board)
+    else boardSendTimer = setTimeout(() => pendingBoard && flushBoardSend(pendingBoard), delay)
+  }
+
+  const broadcastRoster = (roster: CollabRosterPayload, opts?: { urgent?: boolean }) => {
+    pendingRoster = roster
+    const delay = opts?.urgent ? 0 : Math.max(0, MIN_ROSTER_MS - (Date.now() - lastRosterSendAt))
+    clearTimeout(rosterSendTimer)
+    if (delay === 0) flushRosterSend(roster)
+    else rosterSendTimer = setTimeout(() => pendingRoster && flushRosterSend(pendingRoster), delay)
+  }
+
   const replyToHello = () => {
-    if (getBoard) broadcastBoard(getBoard())
-    if (getRoster) broadcastRoster(getRoster())
+    clearTimeout(helloReplyTimer)
+    helloReplyTimer = setTimeout(() => {
+      if (getBoard) broadcastBoard(getBoard(), { urgent: true })
+      if (getRoster) broadcastRoster(getRoster(), { urgent: true })
+    }, 150 + Math.floor(Math.random() * 350))
   }
 
   const applyMessage = (m: CollabMessage) => {
@@ -191,6 +230,9 @@ export function startCollab(
   bc?.postMessage({ type: 'hello', sender: clientId, version: 0 })
 
   const stop = () => {
+    clearTimeout(helloReplyTimer)
+    clearTimeout(boardSendTimer)
+    clearTimeout(rosterSendTimer)
     bc?.close()
     if (channel && supabase) supabase.removeChannel(channel)
   }

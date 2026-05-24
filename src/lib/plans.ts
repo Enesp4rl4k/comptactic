@@ -65,9 +65,14 @@ export async function duplicatePlan(id: string): Promise<string> {
 
 // --- short share links (public, anyone can create/read by id) ---
 
-export async function createShare(data: BoardSnapshot): Promise<string> {
+export async function createShare(data: BoardSnapshot, expiresInDays = 30): Promise<string> {
+  const sb = client()
+  const { data: auth } = await sb.auth.getUser()
+  const userId = auth.user?.id
+  if (!userId) throw new Error('Sign in to create a share link.')
   const id = nanoid(10)
-  const { error } = await client().from('shares').insert({ id, data })
+  const expires_at = new Date(Date.now() + expiresInDays * 864e5).toISOString()
+  const { error } = await sb.from('shares').insert({ id, data, created_by: userId, expires_at })
   if (error) throw error
   return id
 }

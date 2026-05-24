@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useBoardStore } from '../store/useBoardStore'
+import { parseSignupText } from '../lib/parseSignup'
 
 // Paste signed-up players (one per line or comma-separated), then distribute
 // them into squads one-by-one or auto-balance across all squads.
@@ -7,6 +8,7 @@ export default function PlayerPool() {
   const pool = useBoardStore((s) => s.playerPool)
   const squads = useBoardStore((s) => s.squads)
   const addToPool = useBoardStore((s) => s.addToPool)
+  const importSignup = useBoardStore((s) => s.importSignup)
   const removeFromPool = useBoardStore((s) => s.removeFromPool)
   const clearPool = useBoardStore((s) => s.clearPool)
   const memberToPool = useBoardStore((s) => s.memberToPool)
@@ -29,6 +31,20 @@ export default function PlayerPool() {
       addToPool(names)
       setText('')
     }
+  }
+
+  const onSmartPool = () => {
+    const rows = parseSignupText(text)
+    if (!rows.length) return
+    importSignup(rows, 'pool')
+    setText('')
+  }
+
+  const onSmartSquads = () => {
+    const rows = parseSignupText(text)
+    if (!rows.length) return
+    importSignup(rows, 'squads')
+    setText('')
   }
 
   return (
@@ -75,6 +91,12 @@ export default function PlayerPool() {
             />
             <div className="flex flex-col gap-1.5 shrink-0">
               <button onClick={onAdd} className="btn btn-primary h-8 px-3 text-xs">Add</button>
+              <button onClick={onSmartPool} className="btn h-8 px-2 text-[10px]" title="Parse SL/Medic tags → player pool">
+                Parse → pool
+              </button>
+              <button onClick={onSmartSquads} className="btn h-8 px-2 text-[10px]" title="Parse → fill squad slots (creates 9 squads if empty)">
+                Parse → squads
+              </button>
               <button onClick={clearPool} disabled={!pool.length} className="btn h-8 px-3 text-xs">Clear</button>
             </div>
           </div>
@@ -92,7 +114,7 @@ export default function PlayerPool() {
                   }}
                   onDragEnd={() => useBoardStore.getState().setEditingLock(null)}
                   title={`${name} — drag onto a squad`}
-                  className="group flex items-center gap-1.5 rounded bg-panel2 border border-edge px-1.5 py-0.5 cursor-grab active:cursor-grabbing hover:border-accent"
+                  className="pool-chip group flex items-center gap-1.5"
                 >
                   <div
                     className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9px] font-bold text-white ring-1 ring-black/40"

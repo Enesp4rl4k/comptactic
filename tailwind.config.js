@@ -8,13 +8,16 @@ export default {
         blufor: '#3b82f6',
         opfor: '#ef4444',
         neutral: '#eab308',
-        // surfaces (neutral grayscale, 3-tier)
-        bg: '#0c0c0d',
-        panel: '#161617',
-        panel2: '#202022',
-        edge: '#2d2d30',
-        // accent — neutral gray for active states (monochrome theme)
-        accent: '#57575b',
+        // surfaces
+        bg: '#09090b',
+        panel: '#141416',
+        panel2: '#1c1c1f',
+        edge: '#2a2a2e',
+        edge2: '#36363c',
+        // accent — tactical slate + highlight for primary actions
+        accent: '#52525b',
+        highlight: '#3b82f6',
+        success: '#22c55e',
       },
       fontFamily: {
         sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],

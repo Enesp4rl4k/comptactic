@@ -1,11 +1,16 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
+import {
+  createDefaultPolicy,
+  loadRoomPolicy,
+  roleForMember,
+  saveRoomPolicy,
+  type RoomPolicy,
+  type RoomRole,
+} from './roomPolicy'
 
-// Lightweight presence: each client broadcasts its cursor + identity over the
-// room channel (BroadcastChannel for same-origin tabs, Supabase Realtime for
-// cross-network). Also relays transient "pings" (expanding rings) used to point
-// at the map while explaining, without leaving a permanent mark.
+export type { RoomRole }
 
 export interface Peer {
   id: string
@@ -14,8 +19,8 @@ export interface Peer {
   x: number | null
   y: number | null
   t: number
-  /** True for the peer that created the session (room host). */
   host?: boolean
+  role?: RoomRole
 }
 
 export interface Ping {
@@ -39,7 +44,7 @@ const savedColor = () => {
   return c
 }
 
-type Sender = (event: 'cursor' | 'ping' | 'kick', payload: unknown) => void
+type Sender = (event: 'cursor' | 'ping' | 'kick' | 'policy', payload: unknown) => void
 
 interface PresenceState {
   peers: Record<string, Peer>
@@ -47,16 +52,40 @@ interface PresenceState {
   name: string
   color: string
   myId: string
-  /** Whether this client created the session (can kick others). */
   host: boolean
+  myRole: RoomRole
+  roomPolicy: RoomPolicy | null
   setHost: (h: boolean) => void
   setName: (n: string) => void
   setCursor: (x: number | null, y: number | null) => void
   sendPing: (x: number, y: number) => void
-  /** Host-only: remove a peer from the live session. */
   kick: (id: string) => void
+  initRoomPolicy: (roomId: string) => void
+  setMemberRole: (memberId: string, role: RoomRole) => void
+  setDefaultRole: (role: RoomRole) => void
+  broadcastPolicy: () => void
+  applyRemotePolicy: (policy: RoomPolicy) => void
   _send?: Sender
   start: (roomId: string) => () => void
+}
+
+function peerPayload(s: PresenceState): Peer {
+  const role = s.host ? 'editor' : roleForMember(s.roomPolicy, myId, false)
+  return {
+    id: myId,
+    name: s.name || 'Guest',
+    color: s.color,
+    x: null,
+    y: null,
+    t: Date.now(),
+    host: s.host,
+    role,
+  }
+}
+
+function peerWithRole(p: Peer, policy: RoomPolicy | null): Peer {
+  if (p.host) return { ...p, role: 'editor' }
+  return { ...p, role: roleForMember(policy, p.id, false) }
 }
 
 export const usePresence = create<PresenceState>((set, get) => ({
@@ -66,29 +95,36 @@ export const usePresence = create<PresenceState>((set, get) => ({
   color: savedColor(),
   myId,
   host: false,
+  myRole: 'viewer',
+  roomPolicy: null,
 
-  setHost: (h) => set({ host: h }),
+  setHost: (h) => set({ host: h, myRole: h ? 'editor' : get().myRole }),
 
   setName: (n) => {
     localStorage.setItem('ct:presence:name', n)
     set({ name: n })
-    get().setCursor(null, null) // push the new name immediately
+    get().setCursor(null, null)
   },
 
   setCursor: (x, y) => {
     const s = get()
-    s._send?.('cursor', { id: myId, name: s.name || 'Guest', color: s.color, x, y, t: Date.now(), host: s.host })
+    s._send?.('cursor', { ...peerPayload(s), x, y, t: Date.now() })
   },
 
   kick: (id) => {
     const s = get()
-    if (!s.host) return
+    if (!s.host || !s.roomPolicy) return
     s._send?.('kick', { target: id, by: myId })
+    const memberRoles = { ...s.roomPolicy.memberRoles }
+    delete memberRoles[id]
+    const updated = { ...s.roomPolicy, memberRoles, version: Date.now() }
+    saveRoomPolicy(updated)
     set((st) => {
       const peers = { ...st.peers }
       delete peers[id]
-      return { peers }
+      return { peers, roomPolicy: updated }
     })
+    get().broadcastPolicy()
   },
 
   sendPing: (x, y) => {
@@ -98,22 +134,87 @@ export const usePresence = create<PresenceState>((set, get) => ({
     s._send?.('ping', ping)
   },
 
+  initRoomPolicy: (roomId) => {
+    const s = get()
+    if (!s.host) return
+    let policy = loadRoomPolicy(roomId)
+    if (!policy || policy.hostId !== myId) {
+      policy = createDefaultPolicy(roomId, myId)
+      saveRoomPolicy(policy)
+    }
+    set({ roomPolicy: policy, myRole: 'editor' })
+    get().broadcastPolicy()
+  },
+
+  setMemberRole: (memberId, role) => {
+    const s = get()
+    if (!s.host || !s.roomPolicy || memberId === myId) return
+    const updated: RoomPolicy = {
+      ...s.roomPolicy,
+      memberRoles: { ...s.roomPolicy.memberRoles, [memberId]: role },
+      version: Date.now(),
+    }
+    saveRoomPolicy(updated)
+    set((st) => ({
+      roomPolicy: updated,
+      peers: st.peers[memberId] ? { ...st.peers, [memberId]: { ...st.peers[memberId], role } } : st.peers,
+    }))
+    get().broadcastPolicy()
+  },
+
+  setDefaultRole: (role) => {
+    const s = get()
+    if (!s.host || !s.roomPolicy) return
+    const updated: RoomPolicy = { ...s.roomPolicy, defaultRole: role, version: Date.now() }
+    saveRoomPolicy(updated)
+    set({ roomPolicy: updated })
+    get().broadcastPolicy()
+  },
+
+  broadcastPolicy: () => {
+    const s = get()
+    if (!s.host || !s.roomPolicy) return
+    s._send?.('policy', s.roomPolicy)
+  },
+
+  applyRemotePolicy: (policy) => {
+    const role = roleForMember(policy, myId, get().host)
+    set((s) => ({
+      roomPolicy: policy,
+      myRole: role,
+      peers: Object.fromEntries(Object.entries(s.peers).map(([id, p]) => [id, peerWithRole(p, policy)])),
+    }))
+  },
+
   start: (roomId) => {
     const bc = 'BroadcastChannel' in window ? new BroadcastChannel('comptactic:presence:' + roomId) : null
     const channel = supabase ? supabase.channel('presence:' + roomId, { config: { broadcast: { self: false } } }) : null
 
-    const recvCursor = (p: Peer) => {
+    const registerPeer = (p: Peer) => {
       if (!p || p.id === myId) return
-      set((s) => ({ peers: { ...s.peers, [p.id]: p } }))
+      const s = get()
+      set((st) => ({ peers: { ...st.peers, [p.id]: peerWithRole(p, s.roomPolicy) } }))
+
+      if (s.host && s.roomPolicy && !s.roomPolicy.memberRoles[p.id]) {
+        const updated: RoomPolicy = {
+          ...s.roomPolicy,
+          memberRoles: { ...s.roomPolicy.memberRoles, [p.id]: s.roomPolicy.defaultRole },
+          version: Date.now(),
+        }
+        saveRoomPolicy(updated)
+        set({ roomPolicy: updated })
+        get().broadcastPolicy()
+      }
     }
-    const recvPing = (p: Ping) => {
-      if (!p) return
-      set((s) => (s.pings.some((x) => x.id === p.id) ? s : { pings: [...s.pings, p] }))
+
+    const recvPolicy = (policy: RoomPolicy) => {
+      if (!policy || policy.roomId !== roomId) return
+      get().applyRemotePolicy(policy)
     }
+
     const recvKick = (k: { target: string; by: string }) => {
       if (!k) return
       if (k.target === myId) {
-        // We were removed by the host: leave the room and start a fresh session.
         alert('You were removed from this session by the host.')
         window.location.href = window.location.origin + window.location.pathname
         return
@@ -126,19 +227,16 @@ export const usePresence = create<PresenceState>((set, get) => ({
     }
 
     if (bc) {
-      bc.onmessage = (e: MessageEvent<{ kind: 'cursor' | 'ping' | 'kick'; payload: unknown }>) => {
+      bc.onmessage = (e: MessageEvent<{ kind: string; payload: unknown }>) => {
         const m = e.data
         if (!m) return
-        if (m.kind === 'cursor') recvCursor(m.payload as Peer)
-        else if (m.kind === 'ping') recvPing(m.payload as Ping)
-        else if (m.kind === 'kick') recvKick(m.payload as { target: string; by: string })
+        if (m.kind === 'cursor') registerPeer(m.payload as Peer)
+        else if (m.kind === 'ping') {
+          const p = m.payload as Ping
+          if (p) set((s) => (s.pings.some((x) => x.id === p.id) ? s : { pings: [...s.pings, p] }))
+        } else if (m.kind === 'kick') recvKick(m.payload as { target: string; by: string })
+        else if (m.kind === 'policy') recvPolicy(m.payload as RoomPolicy)
       }
-    }
-    if (channel) {
-      channel.on('broadcast', { event: 'cursor' }, ({ payload }: { payload: Peer }) => recvCursor(payload))
-      channel.on('broadcast', { event: 'ping' }, ({ payload }: { payload: Ping }) => recvPing(payload))
-      channel.on('broadcast', { event: 'kick' }, ({ payload }: { payload: { target: string; by: string } }) => recvKick(payload))
-      channel.subscribe()
     }
 
     const send: Sender = (event, payload) => {
@@ -147,29 +245,41 @@ export const usePresence = create<PresenceState>((set, get) => ({
     }
     set({ _send: send })
 
-    // heartbeat so peers know we're online even when the cursor is idle
-    const hb = setInterval(() => {
-      const s = get()
-      send('cursor', { id: myId, name: s.name || 'Guest', color: s.color, x: null, y: null, t: Date.now(), host: s.host })
-    }, 3000)
-    // drop stale peers and expired pings
+    if (channel) {
+      channel.on('broadcast', { event: 'cursor' }, ({ payload }: { payload: Peer }) => registerPeer(payload))
+      channel.on('broadcast', { event: 'ping' }, ({ payload }: { payload: Ping }) => {
+        if (payload) set((s) => (s.pings.some((x) => x.id === payload.id) ? s : { pings: [...s.pings, payload] }))
+      })
+      channel.on('broadcast', { event: 'kick' }, ({ payload }: { payload: { target: string; by: string } }) => recvKick(payload))
+      channel.on('broadcast', { event: 'policy' }, ({ payload }: { payload: RoomPolicy }) => recvPolicy(payload))
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') send('cursor', peerPayload(get()))
+      })
+    }
+
+    send('cursor', peerPayload(get()))
+
+    const hb = setInterval(() => send('cursor', peerPayload(get())), 5000)
+    const policyHb = setInterval(() => {
+      if (get().host) get().broadcastPolicy()
+    }, 8000)
     const prune = setInterval(() => {
       const now = Date.now()
       set((s) => {
-        const peers = Object.fromEntries(Object.entries(s.peers).filter(([, p]) => now - p.t < 8000))
+        const peers = Object.fromEntries(Object.entries(s.peers).filter(([, p]) => now - p.t < 12_000))
         const pings = s.pings.filter((p) => now - p.t < 1600)
-        const peersSame = Object.keys(peers).length === Object.keys(s.peers).length
-        const pingsSame = pings.length === s.pings.length
-        return peersSame && pingsSame ? s : { peers, pings }
+        if (Object.keys(peers).length === Object.keys(s.peers).length && pings.length === s.pings.length) return s
+        return { peers, pings }
       })
     }, 1000)
 
     return () => {
       clearInterval(hb)
+      clearInterval(policyHb)
       clearInterval(prune)
       bc?.close()
       if (channel && supabase) supabase.removeChannel(channel)
-      set({ _send: undefined, peers: {}, pings: [] })
+      set({ _send: undefined, peers: {}, pings: [], roomPolicy: null, myRole: 'viewer' })
     }
   },
 }))

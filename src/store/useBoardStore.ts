@@ -2,6 +2,10 @@ import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { boardFromSnapshot, rosterFromSnapshot } from '../lib/collab'
 import type { CollabBoardPayload, CollabRosterPayload } from '../lib/collab'
+import { buildLightBoardPayload } from '../lib/collabPayload'
+import { mergeRosterPayload } from '../lib/mergeRoster'
+import { bumpRev, mergeSlides } from '../lib/mergeElements'
+import { MAP_BY_ID } from '../data/maps'
 import type {
   BoardData,
   BoardElement,
@@ -127,6 +131,11 @@ interface BoardState {
   editingLock: 'board' | 'roster' | null
   pendingRemoteBoard: CollabBoardPayload | null
   pendingRemoteRoster: CollabRosterPayload | null
+  elementTombstones: Record<string, number>
+  /** Ephemeral collab UI message (toast). */
+  collabNotice: string | null
+  /** Timestamp of last inbound collab message (live indicator). */
+  collabLiveAt: number
   // tool config
   tool: ToolId
   team: Team
@@ -165,6 +174,8 @@ interface BoardState {
   playerPool: string[]
   /** Asset armed for click-to-place; left-clicking the map drops it (stays armed). */
   placingAssetId: string | null
+  /** Next map click places a range ring of this diameter (metres). */
+  pendingRangeMeters: number | null
 
   // slides
   addSlide: () => void
@@ -183,6 +194,12 @@ interface BoardState {
   setEditingLock: (lock: 'board' | 'roster' | null) => void
   setTool: (tool: ToolId) => void
   setPlacingAsset: (assetId: string | null) => void
+  setPendingRangeMeters: (meters: number | null) => void
+  placeRangeRing: (x: number, y: number, rangeMeters: number) => void
+  importSignup: (
+    rows: { name: string; role?: string; squad?: string }[],
+    mode: 'pool' | 'squads',
+  ) => void
   setTeam: (team: Team) => void
   setColor: (color: string) => void
   setStrokeWidth: (w: number) => void
@@ -257,17 +274,25 @@ interface BoardState {
   applyRemote: (snap: BoardSnapshot) => void
   applyRemoteBoard: (board: CollabBoardPayload) => void
   applyRemoteRoster: (roster: CollabRosterPayload) => void
+  applyPendingCollab: () => void
+  clearCollabNotice: () => void
   resetToBlank: () => void
   toSnapshot: () => BoardSnapshot
-  toBoardPayload: () => CollabBoardPayload
+  toBoardPayload: (mode?: 'full' | 'light') => CollabBoardPayload
   toRosterPayload: () => CollabRosterPayload
 }
 
 function mergeRemoteBoard(s: BoardState, board: CollabBoardPayload): Partial<BoardState> {
-  const slides = board.slides?.length ? board.slides : s.slides
-  const activeSlideId =
-    board.activeSlideId && slides.some((x) => x.id === board.activeSlideId) ? board.activeSlideId : slides[0]?.id ?? s.activeSlideId
+  const tombstones = board.elementTombstones ?? {}
+  const syncedLocal = s.slides.map((sl) => (sl.id === s.activeSlideId ? { ...sl, elements: s.elements } : sl))
+  const slides = board.slides?.length ? mergeSlides(syncedLocal, board.slides, tombstones) : syncedLocal
+  const activeSlideId = slides.some((x) => x.id === s.activeSlideId)
+    ? s.activeSlideId
+    : board.activeSlideId && slides.some((x) => x.id === board.activeSlideId)
+      ? board.activeSlideId
+      : slides[0]?.id ?? s.activeSlideId
   const active = slides.find((x) => x.id === activeSlideId)
+  const mergedTombstones = { ...s.elementTombstones, ...tombstones }
   return {
     mapId: board.mapId,
     layerId: board.layerId,
@@ -279,6 +304,8 @@ function mergeRemoteBoard(s: BoardState, board: CollabBoardPayload): Partial<Boa
     customImage: board.customImage ?? null,
     customImageName: board.customImageName ?? null,
     customMapMeta: board.customMapMeta ?? null,
+    elementTombstones: mergedTombstones,
+    collabLiveAt: Date.now(),
   }
 }
 
@@ -296,6 +323,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   editingLock: null,
   pendingRemoteBoard: null,
   pendingRemoteRoster: null,
+  elementTombstones: {},
+  collabNotice: null,
+  collabLiveAt: 0,
   tool: 'select',
   team: 'blufor',
   color: TEAM_COLORS.blufor,
@@ -319,6 +349,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   vehicles: [],
   playerPool: [],
   placingAssetId: null,
+  pendingRangeMeters: null,
 
   setMap: (mapId, layerId) =>
     set((s) => switchBoard(s, keyFor(layerId, null, null), { mapId, layerId, customImage: null, customImageName: null })),
@@ -363,18 +394,24 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   setEditingLock: (lock) => {
     set({ editingLock: lock })
     if (lock !== null) return
-    const { pendingRemoteBoard, pendingRemoteRoster } = get()
-    if (pendingRemoteBoard) {
-      set((s) => ({ ...mergeRemoteBoard(s, pendingRemoteBoard), pendingRemoteBoard: null }))
+    const state = get()
+    let patch: Partial<BoardState> = {}
+    let notice: string | null = null
+    if (state.pendingRemoteBoard) {
+      patch = { ...patch, ...mergeRemoteBoard(state, state.pendingRemoteBoard), pendingRemoteBoard: null }
+      notice = 'Applied pending board updates'
     }
-    if (pendingRemoteRoster) {
-      set({
-        squads: pendingRemoteRoster.squads,
-        vehicles: pendingRemoteRoster.vehicles ?? [],
-        playerPool: pendingRemoteRoster.playerPool ?? [],
+    if (state.pendingRemoteRoster) {
+      patch = {
+        ...patch,
+        squads: state.pendingRemoteRoster.squads,
+        vehicles: state.pendingRemoteRoster.vehicles ?? [],
+        playerPool: state.pendingRemoteRoster.playerPool ?? [],
         pendingRemoteRoster: null,
-      })
+      }
+      notice = notice ? 'Applied pending board and line-up updates' : 'Applied pending line-up updates'
     }
+    if (Object.keys(patch).length) set({ ...patch, collabNotice: notice })
   },
 
   addSlide: () =>
@@ -430,9 +467,46 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const i = slides.findIndex((sl) => sl.id === activeSlideId)
     if (i > 0) get().setActiveSlide(slides[i - 1].id)
   },
-  setTool: (tool) => set({ tool, selectedIds: tool === 'select' ? get().selectedIds : [], placingAssetId: null }),
+  setTool: (tool) =>
+    set({
+      tool,
+      selectedIds: tool === 'select' ? get().selectedIds : [],
+      placingAssetId: null,
+      pendingRangeMeters: null,
+    }),
   // Arm an asset for click-to-place; keep the select tool so map clicks drop it.
-  setPlacingAsset: (assetId) => set((s) => ({ placingAssetId: assetId, tool: 'select', selectedIds: assetId ? [] : s.selectedIds })),
+  setPlacingAsset: (assetId) =>
+    set((s) => ({
+      placingAssetId: assetId,
+      pendingRangeMeters: assetId ? null : s.pendingRangeMeters,
+      tool: 'select',
+      selectedIds: assetId ? [] : s.selectedIds,
+    })),
+
+  setPendingRangeMeters: (meters) =>
+    set((s) => ({
+      pendingRangeMeters: meters,
+      placingAssetId: meters != null ? null : s.placingAssetId,
+      tool: meters != null ? 'range' : s.tool,
+    })),
+
+  placeRangeRing: (x, y, rangeMeters) => {
+    const { mapId, customMapMeta, color, team } = get()
+    const sizeMeters = customMapMeta?.sizeMeters ?? (mapId ? MAP_BY_ID[mapId]?.sizeMeters : null)
+    const MAP_SIZE = 1024
+    const radius = sizeMeters ? (rangeMeters / sizeMeters) * MAP_SIZE : rangeMeters
+    get().addElement({
+      type: 'range',
+      x,
+      y,
+      radius: Math.max(8, radius),
+      rangeMeters,
+      team,
+      color,
+      rotation: 0,
+    } as Omit<BoardElement, 'id' | 'z'>)
+    set({ pendingRangeMeters: null })
+  },
   setTeam: (team) => set({ team, color: TEAM_COLORS[team] }),
   setColor: (color) => set({ color }),
   setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
@@ -497,7 +571,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   addElement: (partial) => {
     const id = partial.id ?? nanoid(8)
     const z = Object.keys(get().elements).length + 1
-    const el = { ...partial, id, z } as BoardElement
+    const el = { ...partial, id, z, rev: partial.rev ?? 1 } as BoardElement
     get().beginHistory()
     set((s) => ({ elements: { ...s.elements, [id]: el }, selectedIds: [id] }))
     return id
@@ -508,7 +582,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set((s) => {
       const cur = s.elements[id]
       if (!cur) return s
-      return { elements: { ...s.elements, [id]: { ...cur, ...patch } as BoardElement } }
+      const next = bumpRev({ ...cur, ...patch } as BoardElement)
+      return { elements: { ...s.elements, [id]: next } }
     })
   },
 
@@ -517,8 +592,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     get().beginHistory()
     set((s) => {
       const next = { ...s.elements }
-      ids.forEach((id) => delete next[id])
-      return { elements: next, selectedIds: [] }
+      const tombstones = { ...s.elementTombstones }
+      for (const id of ids) {
+        const cur = next[id]
+        delete next[id]
+        tombstones[id] = (cur?.rev ?? tombstones[id] ?? 0) + 1
+      }
+      return { elements: next, selectedIds: [], elementTombstones: tombstones }
     })
   },
 
@@ -747,10 +827,24 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   removeSquad: (id) => {
     get().beginRosterHistory()
-    set((s) => ({
-      squads: s.squads.filter((sq) => sq.id !== id),
-      activeSquadId: s.activeSquadId === id ? null : s.activeSquadId,
-    }))
+    set((s) => {
+      const removed = s.squads.find((sq) => sq.id === id)
+      const pool = [...s.playerPool]
+      if (removed) {
+        for (const m of removed.members) {
+          const name = m.name.trim()
+          if (name && !pool.includes(name)) pool.push(name)
+        }
+      }
+      return {
+        squads: s.squads.filter((sq) => sq.id !== id),
+        playerPool: pool,
+        activeSquadId: s.activeSquadId === id ? null : s.activeSquadId,
+        vehicles: s.vehicles.map((v) =>
+          v.squadIds.includes(id) ? { ...v, squadIds: v.squadIds.filter((sid) => sid !== id) } : v,
+        ),
+      }
+    })
   },
 
   setMemberSlot: (squadId, index, patch) =>
@@ -813,6 +907,56 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const merged = [...s.playerPool]
       for (const n of clean) if (!merged.includes(n)) merged.push(n)
       return { playerPool: merged }
+    })
+  },
+
+  importSignup: (rows, mode) => {
+    if (!rows.length) return
+    if (mode === 'pool') {
+      get().addToPool(rows.map((r) => r.name))
+      return
+    }
+    get().beginRosterHistory()
+    set((s) => {
+      let squads = [...s.squads]
+      if (!squads.length) {
+        for (let i = 0; i < 9; i++) {
+          squads.push({
+            id: nanoid(6),
+            name: `Squad ${i + 1}`,
+            team: s.team,
+            color: SQUAD_COLORS[i % SQUAD_COLORS.length],
+            members: [],
+          })
+        }
+      }
+      const matchSquad = (label?: string) => {
+        if (!label) return null
+        const q = label.toLowerCase()
+        return squads.find((sq) => sq.name.toLowerCase().includes(q) || q.includes(sq.name.toLowerCase())) ?? null
+      }
+      let rr = 0
+      for (const row of rows) {
+        let sq = matchSquad(row.squad) ?? squads[rr % squads.length]!
+        let idx = sq.members.findIndex((m) => !m.name.trim())
+        if (idx < 0 && sq.members.length < MAX_MEMBERS) idx = sq.members.length
+        if (idx < 0 || idx >= MAX_MEMBERS) {
+          rr++
+          continue
+        }
+        const members = [...sq.members]
+        while (members.length <= idx) {
+          members.push({ id: nanoid(5), name: '', role: members.length === 0 ? 'sl' : 'rifleman' })
+        }
+        members[idx] = {
+          ...members[idx]!,
+          name: row.name,
+          role: row.role ?? members[idx]!.role,
+        }
+        squads = squads.map((x) => (x.id === sq.id ? { ...x, members } : x))
+        if (!row.squad) rr++
+      }
+      return { squads }
     })
   },
 
@@ -928,23 +1072,58 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
   applyRemoteBoard: (board) => {
     if (get().editingLock === 'board') {
-      set({ pendingRemoteBoard: board })
+      set({
+        pendingRemoteBoard: board,
+        collabLiveAt: Date.now(),
+      })
       return
     }
-    set((s) => mergeRemoteBoard(s, board))
+    set((s) => ({
+      ...mergeRemoteBoard(s, board),
+      collabLiveAt: Date.now(),
+      pendingRemoteBoard: null,
+    }))
   },
 
   applyRemoteRoster: (roster) => {
     if (get().editingLock === 'roster') {
-      set({ pendingRemoteRoster: roster })
+      set({
+        pendingRemoteRoster: roster,
+        collabLiveAt: Date.now(),
+      })
       return
     }
+    const local = get().toRosterPayload()
+    const merged = mergeRosterPayload(local, roster)
     set({
-      squads: roster.squads,
-      vehicles: roster.vehicles ?? [],
-      playerPool: roster.playerPool ?? [],
+      squads: merged.squads,
+      vehicles: merged.vehicles,
+      playerPool: merged.playerPool,
+      collabLiveAt: Date.now(),
+      pendingRemoteRoster: null,
     })
   },
+
+  applyPendingCollab: () => {
+    const state = get()
+    let patch: Partial<BoardState> = { collabNotice: 'Collaborator updates applied' }
+    if (state.pendingRemoteBoard) {
+      patch = { ...patch, ...mergeRemoteBoard(state, state.pendingRemoteBoard), pendingRemoteBoard: null }
+    }
+    if (state.pendingRemoteRoster) {
+      const merged = mergeRosterPayload(state.toRosterPayload(), state.pendingRemoteRoster)
+      patch = {
+        ...patch,
+        squads: merged.squads,
+        vehicles: merged.vehicles,
+        playerPool: merged.playerPool,
+        pendingRemoteRoster: null,
+      }
+    }
+    if (state.pendingRemoteBoard || state.pendingRemoteRoster) set(patch)
+  },
+
+  clearCollabNotice: () => set({ collabNotice: null }),
 
   resetToBlank: () => {
     const slides = freshSlides()
@@ -966,12 +1145,16 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       vehicles: [],
       playerPool: [],
       placingAssetId: null,
+      pendingRangeMeters: null,
       past: [],
       future: [],
       rosterPast: [],
       rosterFuture: [],
       pendingRemoteBoard: null,
       pendingRemoteRoster: null,
+      elementTombstones: {},
+      collabNotice: null,
+      collabLiveAt: 0,
       editingLock: null,
     })
   },
@@ -1050,6 +1233,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
   },
 
-  toBoardPayload: () => boardFromSnapshot(get().toSnapshot()),
+  toBoardPayload: (mode = 'full') => {
+    const base = boardFromSnapshot(get().toSnapshot())
+    const { elementTombstones, elements } = get()
+    const withTombs = Object.keys(elementTombstones).length ? { ...base, elementTombstones } : base
+    if (mode === 'full') return withTombs
+    return buildLightBoardPayload(withTombs, elements)
+  },
   toRosterPayload: () => rosterFromSnapshot(get().toSnapshot()),
 }))

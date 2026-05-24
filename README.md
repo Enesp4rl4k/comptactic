@@ -1,73 +1,67 @@
-# React + TypeScript + Vite
+# CompTactic
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Browser-based Squad tactical planner: draw on map layers, build line-ups, vehicle assignments, multi-slide briefings, and real-time collaboration.
 
-Currently, two official plugins are available:
+**Live:** [comptactic.vercel.app](https://comptactic.vercel.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Official AAS / Skirmish minimaps (SquadMaps CDN) with **capture point overlays** (Squad Wiki pipeline data)
+- Custom PNG map import (scale in km for measure / range tools)
+- Drawing tools, zones, assets, measure & **range rings** (mortar / FOB radius at map scale)
+- Multi-slide tactics per layer, briefing mode, PDF/PNG export, **tactic sheet composite PNG**
+- Real-time collab via `?room=` (BroadcastChannel + optional Supabase)
+- Cloud plans & share links when Supabase is configured
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Regenerate capture points
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+After updating `src/data/maps.ts` layer list:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run gen:cp
 ```
+
+Source: [Squad Wiki map pipeline](https://github.com/Squad-Wiki/squad-wiki-pipeline-map-data) (CC BY-SA 4.0).
+
+### Environment (optional cloud)
+
+Copy `.env.example` to `.env.local`:
+
+```env
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+```
+
+Run `supabase/schema.sql` in the Supabase SQL editor. For existing projects, also apply `supabase/migrations/002_shares_hardening.sql`.
+
+**Vercel:** add the same `VITE_*` variables in Project → Settings → Environment Variables, then redeploy.
+
+### Tests
+
+```bash
+npm run build
+npm run test:e2e
+```
+
+## Deploy
+
+- **Vercel (recommended):** connect the GitHub repo; build command `npm run build`, output `dist`.
+- **GitHub Pages:** workflow in `.github/workflows/deploy.yml` uses `base: /comptactic/` on Actions; requires Pages enabled on the repo.
+
+## Share links
+
+- **Edit link:** `?room=` + optional `?s=` short id — live sync for editors.
+- **View-only:** add `&view=1`.
+- **Discord embed:** add `&embed=1` for a minimal map-only view (combine with `&view=1` for read-only).
+- Short shares (`?s=`) require sign-in when Supabase RLS migration is applied (30-day expiry by default).
+
+## License
+
+App code: project license. Map imagery & game data belong to Offworld Industries / respective sources; capture point coordinates from Squad Wiki Editorial pipeline (CC BY-SA 4.0).

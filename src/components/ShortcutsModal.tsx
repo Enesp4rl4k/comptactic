@@ -28,7 +28,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['V', 'Select / Move'],
       ['A · L · P', 'Arrow · Line · Freehand'],
       ['R · C · Z', 'Rectangle · Circle · Zone'],
-      ['T · M · G', 'Text · Measure · Ping'],
+      ['T · M · O · G', 'Text · Measure · Range · Ping'],
     ],
   },
   {

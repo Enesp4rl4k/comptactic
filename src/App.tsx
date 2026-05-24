@@ -15,10 +15,17 @@ import PlansModal from './components/PlansModal'
 import BriefingMode from './components/BriefingMode'
 import TemplatesModal from './components/TemplatesModal'
 import ShortcutsModal from './components/ShortcutsModal'
+import SpawnTimeline from './components/SpawnTimeline'
+import { IconChevronDown, IconCloud, IconHelp, IconMap, IconPlay } from './components/ui/Icons'
+import HomeScreen from './components/HomeScreen'
 import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
-import { startCollab, getRoomId, createNewRoom } from './lib/collab'
+import { createNewRoom } from './lib/collab'
+import { createAndEnterRoom, enterRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
+import { useCollabSync } from './hooks/useCollabSync'
+import CollabBanner from './components/CollabBanner'
+import RoomMembersModal from './components/RoomMembersModal'
 import { usePresence } from './lib/presence'
 import type { BoardSnapshot } from './types'
 import { useBoardStore } from './store/useBoardStore'
@@ -31,6 +38,7 @@ import {
   exportPNG,
   clearLocal,
 } from './lib/persist'
+import { loadCapturePoints } from './lib/capturePoints'
 
 export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -43,12 +51,36 @@ export default function App() {
   const [currentTitle, setCurrentTitle] = useState('Untitled plan')
   const [toast, setToast] = useState<string | null>(null)
   const [view, setView] = useState<'board' | 'lineup' | 'sheet'>('board')
-  const [roomId, setRoomId] = useState(() => getRoomId())
-  const viewOnly = useMemo(() => new URLSearchParams(window.location.search).get('view') === '1', [])
+  const [roomId, setRoomId] = useState<string | null>(() => resolveInitialRoomId())
+  const [membersOpen, setMembersOpen] = useState(false)
+  const search = useMemo(() => new URLSearchParams(window.location.search), [])
+  const urlViewOnly = search.get('view') === '1'
+  const embed = search.get('embed') === '1'
+  const host = usePresence((s) => s.host)
+  const myRole = usePresence((s) => s.myRole)
+  const canEdit = !urlViewOnly && (host || myRole === 'editor')
+  const readOnly = !canEdit
   const store = useBoardStore()
   const { user } = useAuth()
   const map = store.mapId ? MAP_BY_ID[store.mapId] : null
+  const layerId = store.layerId
   const mapLabel = store.customImage ? store.customImageName || 'Custom image' : map ? map.name : 'Select Map'
+
+  const collabNotice = useBoardStore((s) => s.collabNotice)
+  const clearCollabNotice = useBoardStore((s) => s.clearCollabNotice)
+
+  useEffect(() => {
+    const run = () => {
+      void loadCapturePoints()
+    }
+    const ric = window.requestIdleCallback
+    if (ric) {
+      const id = ric(run, { timeout: 2500 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const t = setTimeout(run, 150)
+    return () => clearTimeout(t)
+  }, [])
 
   // load shared plan: ?s=<id> short link, then #hash, else autosave
   useEffect(() => {
@@ -73,89 +105,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // realtime collaboration: board and roster sync on separate channels (view-only: receive only)
-  useEffect(() => {
-    let applyingRemote = false
-    let lastBoardSent = ''
-    let lastRosterSent = ''
-    let boardTimer: ReturnType<typeof setTimeout> | undefined
-    let rosterTimer: ReturnType<typeof setTimeout> | undefined
-    const handle = startCollab(
-      roomId,
-      (board) => {
-        applyingRemote = true
-        useBoardStore.getState().applyRemoteBoard(board)
-        applyingRemote = false
-      },
-      (roster) => {
-        applyingRemote = true
-        useBoardStore.getState().applyRemoteRoster(roster)
-        applyingRemote = false
-      },
-      () => useBoardStore.getState().toBoardPayload(),
-      () => useBoardStore.getState().toRosterPayload(),
-    )
-    const unsub = viewOnly
-      ? () => {}
-      : useBoardStore.subscribe((state, prev) => {
-      if (applyingRemote) return
-
-      const boardChanged =
-        state.mapId !== prev.mapId ||
-        state.layerId !== prev.layerId ||
-        state.customImage !== prev.customImage ||
-        state.customImageName !== prev.customImageName ||
-        state.customMapMeta !== prev.customMapMeta ||
-        state.slides !== prev.slides ||
-        state.activeSlideId !== prev.activeSlideId ||
-        state.boards !== prev.boards ||
-        state.activeKey !== prev.activeKey ||
-        state.elements !== prev.elements
-
-      const rosterChanged =
-        state.squads !== prev.squads ||
-        state.vehicles !== prev.vehicles ||
-        state.playerPool !== prev.playerPool
-
-      if (boardChanged) {
-        clearTimeout(boardTimer)
-        boardTimer = setTimeout(() => {
-          const board = useBoardStore.getState().toBoardPayload()
-          const key = JSON.stringify(board)
-          if (key === lastBoardSent) return
-          lastBoardSent = key
-          handle.broadcastBoard(board)
-        }, 150)
-      }
-
-      if (rosterChanged) {
-        clearTimeout(rosterTimer)
-        rosterTimer = setTimeout(() => {
-          const roster = useBoardStore.getState().toRosterPayload()
-          const key = JSON.stringify(roster)
-          if (key === lastRosterSent) return
-          lastRosterSent = key
-          handle.broadcastRoster(roster)
-        }, 150)
-      }
-    })
-    return () => {
-      clearTimeout(boardTimer)
-      clearTimeout(rosterTimer)
-      unsub()
-      handle.stop()
-    }
-  }, [roomId, viewOnly])
+  // Realtime collaboration (adaptive sync in useCollabSync)
+  useCollabSync(roomId ?? '', readOnly)
 
   // presence: join the room, default the display name from the signed-in email.
   // The client that created the room (no ?room in the URL) is the host; the flag
   // is persisted per-room so a refresh keeps host rights.
   useEffect(() => {
-    const hadRoom = !!new URLSearchParams(window.location.search).get('room')
+    if (!roomId) return
     const hostKey = 'ct:host:' + roomId
-    const isHost = hadRoom ? localStorage.getItem(hostKey) === '1' : true
+    const isHost = localStorage.getItem(hostKey) === '1'
     if (isHost) localStorage.setItem(hostKey, '1')
     usePresence.getState().setHost(isHost)
+    if (isHost) usePresence.getState().initRoomPolicy(roomId)
     const stop = usePresence.getState().start(roomId)
     return stop
   }, [roomId])
@@ -202,6 +164,12 @@ export default function App() {
     setToast(msg)
     setTimeout(() => setToast(null), 2200)
   }
+
+  useEffect(() => {
+    if (!collabNotice) return
+    flash(collabNotice)
+    clearCollabNotice()
+  }, [collabNotice, clearCollabNotice])
 
   const snapshotHasWork = (snap: BoardSnapshot) => {
     if (snap.mapId || snap.customImage) return true
@@ -260,7 +228,7 @@ export default function App() {
 
   const onShareEdit = async () => {
     const url = await buildShareUrl(false)
-    await copyLink(url, 'Live edit link copied — changes sync in real time')
+    await copyLink(url, 'Room link copied — host grants edit access in Members')
   }
 
   const onShareView = async () => {
@@ -296,35 +264,94 @@ export default function App() {
     }
   }
 
+  if (!roomId) {
+    return (
+      <HomeScreen
+        onCreateRoom={() => {
+          clearLocal()
+          useBoardStore.getState().resetToBlank()
+          setCurrentPlanId(null)
+          setCurrentTitle('Untitled plan')
+          const id = createAndEnterRoom()
+          setRoomId(id)
+        }}
+        onJoinRoom={(id) => {
+          enterRoom(id)
+          setRoomId(id)
+        }}
+      />
+    )
+  }
+
+  if (embed) {
+    return (
+      <div className="h-full flex flex-col bg-bg">
+        {readOnly && (
+          <div className="shrink-0 px-3 py-1 text-center text-[10px] text-amber-200 bg-amber-500/10 border-b border-amber-500/25">
+            {urlViewOnly ? 'View-only link' : 'View access'}
+          </div>
+        )}
+        <div className="shrink-0 px-3 py-1.5 text-xs text-gray-400 border-b border-edge truncate">
+          {mapLabel}
+          {layerId && map && (
+            <span className="text-gray-500">
+              {' '}
+              · {map.layers.find((l) => l.id === layerId)?.name}
+            </span>
+          )}
+        </div>
+        <div className="flex-1 min-h-0">
+          <TacticalBoard readOnly={readOnly} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col">
-      {viewOnly && (
-        <div className="shrink-0 px-4 py-1.5 text-center text-xs text-amber-200 bg-amber-500/10 border-b border-amber-500/25">
-          View-only mode — you can watch the plan but not edit it
+      {readOnly && (
+        <div className="shrink-0 px-4 py-2 text-center text-xs text-amber-100/90 bg-amber-500/10 border-b border-amber-500/20">
+          {urlViewOnly
+            ? 'View-only link — you can watch the plan but not edit it'
+            : 'View access — ask the host for edit permission in Members'}
         </div>
       )}
-      {/* header */}
-      <header className="flex items-center gap-3 px-4 h-12 bg-panel border-b border-edge shrink-0">
+      <header className="app-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-12 bg-panel/95 border-b border-edge backdrop-blur-md shrink-0">
         <button
           type="button"
-          onClick={viewOnly ? undefined : onNewPlan}
-          disabled={viewOnly}
-          title={viewOnly ? 'CompTactic' : 'New blank plan'}
-          className={`font-display font-bold text-base tracking-wide text-accent select-none ${
-            viewOnly ? 'cursor-default' : 'cursor-pointer hover:opacity-90'
+          onClick={readOnly ? undefined : onNewPlan}
+          disabled={readOnly}
+          title={readOnly ? 'CompTactic' : 'New blank plan'}
+          className={`brand-mark font-display font-bold text-[15px] tracking-wide select-none shrink-0 ${
+            readOnly ? 'cursor-default text-zinc-400' : 'cursor-pointer text-zinc-300 hover:text-white'
           }`}
         >
-          Comp<span className="text-white">Tactic</span>
+          Comp<span className="brand-accent text-highlight">Tactic</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm('Leave this room and return to the home screen?')) {
+              leaveToHome()
+              setRoomId(null)
+            }
+          }}
+          className="btn btn-ghost text-xs hidden md:inline-flex"
+          title="Back to home"
+        >
+          Home
         </button>
         <button
           onClick={() => setPickerOpen(true)}
-          disabled={viewOnly}
-          className="btn btn-primary max-w-[200px] truncate disabled:opacity-60"
+          disabled={readOnly}
+          className="btn max-w-[min(220px,28vw)] truncate disabled:opacity-60 gap-2 !justify-start"
+          title="Change map or layer"
         >
-          {mapLabel}
+          <IconMap className="shrink-0 text-highlight" />
+          <span className="truncate">{mapLabel}</span>
         </button>
 
-        <div className="ml-2 flex items-center rounded-lg bg-panel2 border border-edge p-0.5">
+        <div className="tab-group ml-1 hidden sm:flex">
           <TabBtn active={view === 'board'} onClick={() => setView('board')}>
             Board
           </TabBtn>
@@ -332,12 +359,12 @@ export default function App() {
             Line-up
           </TabBtn>
           <TabBtn active={view === 'sheet'} onClick={() => setView('sheet')}>
-            Tactic Sheet
+            Sheet
           </TabBtn>
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5">
-          {!viewOnly && (
+        <div className="ml-auto flex items-center gap-1 sm:gap-1.5 overflow-x-auto shrink-0">
+          {canEdit && (
             <>
               <button className="btn btn-success" onClick={onSave} title="Save to cloud">
                 Save
@@ -348,8 +375,9 @@ export default function App() {
             </>
           )}
           {view === 'board' && (
-            <button className="btn" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">
-              ▶ Briefing
+            <button className="btn gap-1.5" onClick={() => setBriefingOpen(true)} title="Play slides fullscreen">
+              <IconPlay size={14} />
+              <span className="hidden md:inline">Briefing</span>
             </button>
           )}
           <ExportMenu
@@ -366,13 +394,24 @@ export default function App() {
               const ok = await exportSlidesPNG()
               if (!ok) flash('Open the Board with a map first')
             }}
+            onSheetPNG={async () => {
+              flash('Exporting tactic sheet…')
+              const { exportTacticSheetPNG } = await import('./lib/exportTacticSheet')
+              const ok = await exportTacticSheetPNG()
+              if (!ok) flash('Open the Board with a map first')
+            }}
           />
-          {!viewOnly && <ShareMenu onEdit={onShareEdit} onView={onShareView} />}
+          {(canEdit || host) && <ShareMenu onEdit={onShareEdit} onView={onShareView} />}
           {isSupabaseConfigured && (
-            <button className="btn" onClick={() => setPlansOpen(true)}>☁ Plans</button>
+            <button className="btn gap-1.5" onClick={() => setPlansOpen(true)} title="Cloud plans">
+              <IconCloud size={15} />
+              <span className="hidden lg:inline">Plans</span>
+            </button>
           )}
-          <button className="btn" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)">?</button>
-          <OnlineBar />
+          <button className="btn btn-icon" onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)">
+            <IconHelp />
+          </button>
+          <OnlineBar onOpenMembers={() => setMembersOpen(true)} />
           <div className="mx-1 h-6 w-px bg-edge" />
           {user ? (
             <UserMenu email={user.email ?? 'Account'} onSignOut={() => signOut()} />
@@ -382,31 +421,33 @@ export default function App() {
         </div>
       </header>
 
-      {view === 'board' && !viewOnly && <Toolbar />}
+      {view === 'board' && canEdit && <Toolbar />}
 
       {/* main */}
       {view === 'board' && (
-        <div className="flex flex-1 min-h-0">
-          <RosterPanel readOnly={viewOnly} />
+        <div key="view-board" className="flex flex-1 min-h-0 animate-view-in">
+          <RosterPanel readOnly={readOnly} />
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex-1 min-h-0 relative">
-              <TacticalBoard readOnly={viewOnly} />
-              {!viewOnly && <LayersPanel />}
+              <TacticalBoard readOnly={readOnly} />
+              {canEdit && <CollabBanner />}
+              {canEdit && <LayersPanel />}
             </div>
-            <SlidesBar readOnly={viewOnly} />
+            <SlidesBar readOnly={readOnly} />
           </div>
-          {!viewOnly && <AssetPalette />}
+          {canEdit && <AssetPalette />}
         </div>
       )}
       {view === 'lineup' && (
-        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
+        <div key="view-lineup" className="flex-1 min-h-0 flex flex-col overflow-y-auto animate-view-in">
           <LayerInfoPanel />
+          <SpawnTimeline />
           <PlayerPool />
           <LineupGrid />
         </div>
       )}
       {view === 'sheet' && (
-        <div className="flex-1 min-h-0">
+        <div key="view-sheet" className="flex-1 min-h-0 animate-view-in">
           <TacticSheet />
         </div>
       )}
@@ -433,38 +474,65 @@ export default function App() {
       {briefingOpen && <BriefingMode onClose={() => setBriefingOpen(false)} />}
       {templatesOpen && <TemplatesModal onClose={() => setTemplatesOpen(false)} flash={flash} />}
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
+      <RoomMembersModal
+        open={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        onCopyEditLink={() => {
+          void onShareEdit()
+        }}
+        onCopyViewLink={() => {
+          void onShareView()
+        }}
+      />
 
-      {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-panel2 border border-edge text-white text-sm px-4 py-2 rounded shadow-lg z-50">
-          {toast}
-        </div>
-      )}
+      <nav className="sm:hidden shrink-0 flex border-t border-edge bg-panel/95 backdrop-blur-md">
+        <MobileTab active={view === 'board'} onClick={() => setView('board')} label="Board" />
+        <MobileTab active={view === 'lineup'} onClick={() => setView('lineup')} label="Line-up" />
+        <MobileTab active={view === 'sheet'} onClick={() => setView('sheet')} label="Sheet" />
+      </nav>
+
+      {toast && <div className="toast">{toast}</div>}
+      <span className="site-credit" aria-hidden="true">Z1roNNN</span>
     </div>
   )
 }
 
-// Session members. Avatars open a dropdown listing everyone in the room; the
-// host (session creator) can rename themselves and kick other members.
-function OnlineBar() {
+// Session members — click avatars to open the room members panel.
+function OnlineBar({ onOpenMembers }: { onOpenMembers: () => void }) {
   const peers = usePresence((s) => s.peers)
   const name = usePresence((s) => s.name)
   const color = usePresence((s) => s.color)
   const host = usePresence((s) => s.host)
-  const setName = usePresence((s) => s.setName)
-  const kick = usePresence((s) => s.kick)
-  const [open, setOpen] = useState(false)
+  const collabLiveAt = useBoardStore((s) => s.collabLiveAt)
+  const [live, setLive] = useState(false)
   const others = Object.values(peers)
   const total = others.length + 1
   const initial = (n: string) => (n.trim().charAt(0) || '?').toUpperCase()
 
+  useEffect(() => {
+    const tick = () => {
+      const at = useBoardStore.getState().collabLiveAt
+      setLive(at > 0 && Date.now() - at < 4000)
+    }
+    tick()
+    const id = setInterval(tick, 400)
+    return () => clearInterval(id)
+  }, [collabLiveAt])
+
   return (
-    <div className="relative mr-1">
+    <div className="relative mr-1 flex items-center gap-1.5">
+      {live && (
+        <span
+          className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"
+          title="Live sync active"
+        />
+      )}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={onOpenMembers}
         className="flex items-center gap-1 cursor-pointer"
-        title={`${total} in session`}
+        title={`${total} in session${live ? ' · syncing' : ''} — manage members`}
       >
-        <div className="flex items-center -space-x-1.5">
+        <div className="flex items-center -space-x-1.5 avatar-stack">
           <span className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel" style={{ background: color }}>
             {initial(name || 'You')}
           </span>
@@ -475,78 +543,30 @@ function OnlineBar() {
           ))}
         </div>
         {total > 4 && <span className="text-xs text-gray-400">+{total - 4}</span>}
+        {host && <span className="hidden xl:inline text-[10px] text-amber-400/90 font-medium ml-0.5">Host</span>}
       </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1.5 z-50 w-64 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
-            <div className="px-3 py-2 text-xs text-gray-400 border-b border-edge">In this session · {total}</div>
-
-            {/* you */}
-            <div className="flex items-center gap-2 px-3 py-2">
-              <span className="h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold text-black" style={{ background: color }}>
-                {initial(name || 'You')}
-              </span>
-              <span className="text-sm text-gray-100 truncate">{name || 'You'} <span className="text-gray-500">(you)</span></span>
-              {host && <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">HOST</span>}
-              <button
-                onClick={() => { const n = window.prompt('Your display name:', name); if (n != null) setName(n.trim()) }}
-                className="ml-auto text-[11px] text-gray-400 hover:text-white cursor-pointer"
-              >
-                rename
-              </button>
-            </div>
-
-            {/* peers */}
-            {others.length === 0 && <div className="px-3 py-2 text-[11px] text-gray-600">No one else here yet. Use Share to invite.</div>}
-            {others.map((p) => (
-              <div key={p.id} className="flex items-center gap-2 px-3 py-2 border-t border-edge/60">
-                <span className="h-6 w-6 rounded-full grid place-items-center text-[10px] font-bold text-black" style={{ background: p.color }}>
-                  {initial(p.name)}
-                </span>
-                <span className="text-sm text-gray-200 truncate">{p.name}</span>
-                {p.host && <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">HOST</span>}
-                {host && (
-                  <button
-                    onClick={() => { if (confirm(`Remove ${p.name} from the session?`)) kick(p.id) }}
-                    className="ml-auto text-[11px] px-2 py-0.5 rounded border border-edge text-gray-400 hover:text-red-400 hover:border-red-500/60 cursor-pointer"
-                    title="Kick"
-                  >
-                    Kick
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   )
 }
 
 function ShareMenu({ onEdit, onView }: { onEdit: () => void; onView: () => void }) {
   const [open, setOpen] = useState(false)
-  const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer'
   const run = (fn: () => void) => {
     setOpen(false)
     void fn()
   }
   return (
     <div className="relative">
-      <button className="btn btn-success" onClick={() => setOpen((v) => !v)} title="Share links">
-        Share ▾
+      <button className="btn btn-success gap-1" onClick={() => setOpen((v) => !v)} title="Share links">
+        Share
+        <IconChevronDown className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1.5 z-50 w-56 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
-            <button className={item} onClick={() => run(onEdit)}>
-              Edit link · live sync
-            </button>
-            <button className={item} onClick={() => run(onView)}>
-              View-only link
-            </button>
+          <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
+          <div className="dropdown-menu w-56">
+            <button className="dropdown-item" onClick={() => run(onEdit)}>Room link · host grants edit</button>
+            <button className="dropdown-item" onClick={() => run(onView)}>View-only link</button>
           </div>
         </>
       )}
@@ -554,20 +574,36 @@ function ShareMenu({ onEdit, onView }: { onEdit: () => void; onView: () => void 
   )
 }
 
-function ExportMenu({ onPNG, onPDF, onAllPNG }: { onPNG: () => void; onPDF: () => void; onAllPNG: () => void }) {
+function ExportMenu({
+  onPNG,
+  onPDF,
+  onAllPNG,
+  onSheetPNG,
+}: {
+  onPNG: () => void
+  onPDF: () => void
+  onAllPNG: () => void
+  onSheetPNG: () => void
+}) {
   const [open, setOpen] = useState(false)
-  const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer'
-  const run = (fn: () => void) => { setOpen(false); fn() }
+  const run = (fn: () => void) => {
+    setOpen(false)
+    fn()
+  }
   return (
     <div className="relative">
-      <button className="btn" onClick={() => setOpen((v) => !v)} title="Export">Export ▾</button>
+      <button className="btn gap-1" onClick={() => setOpen((v) => !v)} title="Export">
+        Export
+        <IconChevronDown className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
+      </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1.5 z-50 w-52 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
-            <button className={item} onClick={() => run(onPNG)}>PNG · current slide</button>
-            <button className={item} onClick={() => run(onPDF)}>PDF · all slides</button>
-            <button className={item} onClick={() => run(onAllPNG)}>PNG · all slides</button>
+          <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
+          <div className="dropdown-menu w-52">
+            <button className="dropdown-item" onClick={() => run(onPNG)}>PNG · current slide</button>
+            <button className="dropdown-item" onClick={() => run(onPDF)}>PDF · all slides</button>
+            <button className="dropdown-item" onClick={() => run(onAllPNG)}>PNG · all slides</button>
+            <button className="dropdown-item" onClick={() => run(onSheetPNG)}>PNG · tactic sheet</button>
           </div>
         </>
       )}
@@ -585,13 +621,22 @@ function TabBtn({
   onClick: () => void
 }) {
   return (
+    <button type="button" onClick={onClick} className={`tab-btn ${active ? 'tab-btn-active' : ''}`}>
+      {children}
+    </button>
+  )
+}
+
+function MobileTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
     <button
+      type="button"
       onClick={onClick}
-      className={`px-3 h-7 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-        active ? 'bg-accent text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-edge/60'
+      className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+        active ? 'text-highlight border-t-2 border-highlight bg-highlight/5' : 'text-zinc-500 border-t-2 border-transparent'
       }`}
     >
-      {children}
+      {label}
     </button>
   )
 }
@@ -604,18 +649,21 @@ function UserMenu({ email, onSignOut }: { email: string; onSignOut: () => void }
       <button
         onClick={() => setOpen((v) => !v)}
         title={email}
-        className="h-8 w-8 rounded-full bg-accent text-white text-sm font-semibold grid place-items-center cursor-pointer hover:brightness-110"
+        className="h-8 w-8 rounded-full bg-highlight text-white text-sm font-semibold grid place-items-center cursor-pointer hover:bg-blue-500 transition-colors"
       >
         {initial}
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1.5 z-50 w-56 rounded-md border border-edge bg-panel2 shadow-panel overflow-hidden">
-            <div className="px-3 py-2 text-xs text-gray-400 border-b border-edge truncate">{email}</div>
+          <div className="dropdown-backdrop" onClick={() => setOpen(false)} />
+          <div className="dropdown-menu w-56">
+            <div className="dropdown-label truncate">{email}</div>
             <button
-              onClick={() => { setOpen(false); onSignOut() }}
-              className="block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-edge cursor-pointer"
+              onClick={() => {
+                setOpen(false)
+                onSignOut()
+              }}
+              className="dropdown-item"
             >
               Sign out
             </button>

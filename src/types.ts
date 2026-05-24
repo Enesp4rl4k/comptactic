@@ -14,6 +14,7 @@ export type ToolId =
   | 'zone'
   | 'text'
   | 'measure'
+  | 'range'
   | 'ping'
 
 export type ElementType =
@@ -21,6 +22,7 @@ export type ElementType =
   | 'line'
   | 'pen'
   | 'measure'
+  | 'range'
   | 'rect'
   | 'circle'
   | 'zone'
@@ -42,6 +44,8 @@ interface ElementBase {
   locked?: boolean
   /** Optional display name shown in the Layers panel. */
   name?: string
+  /** Monotonic revision for collaborative per-id merge (higher wins). */
+  rev?: number
 }
 
 /** Polyline-based elements store absolute stage coordinates in `points`. */
@@ -64,6 +68,15 @@ export interface CircleElement extends ElementBase {
   x: number
   y: number
   radius: number
+}
+
+/** Map-scale range ring (mortar, FOB radius, etc.) with a metre readout. */
+export interface RangeElement extends ElementBase {
+  type: 'range'
+  x: number
+  y: number
+  radius: number
+  rangeMeters: number
 }
 
 /** Polygon area marked by clicking corners; absolute stage coords in `points`. */
@@ -98,6 +111,7 @@ export type BoardElement =
   | PolyElement
   | RectElement
   | CircleElement
+  | RangeElement
   | ZoneElement
   | TextElement
   | IconElement
