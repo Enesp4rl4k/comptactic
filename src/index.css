@@ -11,8 +11,8 @@ body,
 
 body {
   background:
-    radial-gradient(ellipse 70% 45% at 0% 0%, rgba(59, 130, 246, 0.045) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 40% at 100% 100%, rgba(239, 68, 68, 0.035) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 45% at 0% 0%, rgba(202, 138, 4, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 40% at 100% 100%, rgba(82, 82, 91, 0.12) 0%, transparent 50%),
     #09090b;
   color: #e4e4e7;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -23,7 +23,7 @@ body {
 }
 
 ::selection {
-  background: rgba(59, 130, 246, 0.35);
+  background: rgba(202, 138, 4, 0.35);
 }
 
 @layer components {
@@ -41,12 +41,12 @@ body {
            disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-primary {
-    @apply border-transparent bg-highlight text-white shadow-sm shadow-highlight/20
-           hover:bg-blue-500 hover:text-white hover:border-transparent;
+    @apply border-transparent bg-highlight text-zinc-950 shadow-sm shadow-highlight/25
+           hover:bg-amber-400 hover:text-zinc-950 hover:border-transparent;
   }
   .btn-success {
-    @apply border-emerald-500/30 bg-emerald-500/15 text-emerald-100
-           hover:bg-emerald-500/25 hover:text-white hover:border-emerald-500/50;
+    @apply border-amber-600/35 bg-amber-600/15 text-amber-100
+           hover:bg-amber-500/25 hover:text-zinc-50 hover:border-amber-500/45;
   }
   .btn-ghost {
     @apply border-transparent bg-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-100;
@@ -205,7 +205,7 @@ body {
   /* Header accent line */
   .app-header {
     @apply relative;
-    box-shadow: 0 1px 0 rgba(59, 130, 246, 0.08);
+    box-shadow: 0 1px 0 rgba(202, 138, 4, 0.1);
   }
   .app-header::after {
     content: '';
@@ -214,7 +214,7 @@ body {
     right: 0;
     bottom: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.25) 50%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(202, 138, 4, 0.35) 50%, transparent);
     pointer-events: none;
   }
 
@@ -223,7 +223,7 @@ body {
     @apply transition-[color,text-shadow] duration-200;
   }
   .brand-mark:hover:not(:disabled) .brand-accent {
-    text-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
+    text-shadow: 0 0 18px rgba(250, 204, 21, 0.5);
   }
 
   /* Session avatars */
@@ -246,7 +246,7 @@ body {
   .pool-chip {
     @apply px-2 py-0.5 rounded-md text-xs bg-panel2 border border-edge text-zinc-300 cursor-grab
            transition-[transform,box-shadow,border-color] duration-150
-           hover:border-highlight/35 hover:shadow-[0_0_10px_rgba(59,130,246,0.08)] hover:-translate-y-px
+           hover:border-highlight/35 hover:shadow-[0_0_10px_rgba(202,138,4,0.12)] hover:-translate-y-px
            active:scale-95 active:cursor-grabbing;
   }
 
@@ -298,7 +298,7 @@ body {
     inset: 0;
     background:
       linear-gradient(180deg, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0.88) 45%, rgba(9, 9, 11, 0.94) 100%),
-      radial-gradient(ellipse 80% 50% at 50% 20%, rgba(34, 197, 94, 0.06), transparent 55%);
+      radial-gradient(ellipse 80% 50% at 50% 20%, rgba(202, 138, 4, 0.08), transparent 55%);
   }
   .home-bg-vignette {
     position: absolute;
@@ -312,7 +312,7 @@ body {
     @apply mb-8 text-center sm:text-left;
   }
   .home-eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-500/90 mb-3;
+    @apply text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-500/90 mb-3;
     font-family: theme('fontFamily.display');
   }
   .home-logo {
@@ -375,7 +375,7 @@ body {
     @apply mt-10 pt-6 border-t border-edge flex flex-col gap-2 list-none p-0 m-0 text-sm text-zinc-600;
   }
   .home-notes li {
-    @apply flex items-center gap-2 before:content-[''] before:h-1 before:w-1 before:rounded-full before:bg-emerald-600/70 before:shrink-0;
+    @apply flex items-center gap-2 before:content-[''] before:h-1 before:w-1 before:rounded-full before:bg-amber-600/80 before:shrink-0;
   }
   .home-attribution {
     @apply fixed bottom-2.5 right-3 z-10 text-[10px] text-slate-600/70 pointer-events-none select-none;
@@ -512,10 +512,10 @@ body {
 @keyframes tool-glow {
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.12);
+    box-shadow: 0 0 10px rgba(202, 138, 4, 0.15);
   }
   50% {
-    box-shadow: 0 0 14px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 14px rgba(250, 204, 21, 0.22);
   }
 }
 

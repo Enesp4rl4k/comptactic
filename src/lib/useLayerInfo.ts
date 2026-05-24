@@ -61,12 +61,14 @@ export function assetIdForIcon(icon: string): string {
   if (icon.includes('truck_logistics') || icon.includes('logi')) return 'logi'
   if (icon.includes('truck_transport') || icon.includes('truck')) return 'transport'
   if (icon.includes('attackhelo')) return 'heli_atk'
+  if (icon.includes('jeep_antitank')) return 'heli_atk'
   if (icon.includes('transporthelo') || icon.includes('helo')) return 'heli_trans'
   if (icon.includes('boat')) return 'boat'
   if (icon.includes('tank')) return 'mbt'
   if (icon.includes('ifv')) return 'ifv'
   if (icon.includes('apc')) return 'apc'
   if (icon.includes('jeep') || icon.includes('recon') || icon.includes('motorcycle')) return 'mrap'
+  if (icon.includes('antiair') || icon.includes('AntiAir')) return 'helipad'
   return 'transport'
 }
 

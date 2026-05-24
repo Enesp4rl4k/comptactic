@@ -303,12 +303,17 @@ export default function App() {
         </div>
       )}
       <header className="app-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-12 bg-panel/95 border-b border-edge backdrop-blur-md shrink-0 overflow-visible z-20">
-        <div
-          className="brand-mark font-display font-bold text-[15px] tracking-wide select-none shrink-0 text-zinc-300"
-          title="CompTactic"
+        <button
+          type="button"
+          onClick={canEdit ? onNewSession : undefined}
+          disabled={!canEdit}
+          className={`brand-mark font-display font-bold text-[15px] tracking-wide select-none shrink-0 border-0 bg-transparent p-0 ${
+            canEdit ? 'cursor-pointer text-zinc-300 hover:text-zinc-50' : 'cursor-default text-zinc-500'
+          }`}
+          title={canEdit ? 'New tactic session (fresh room)' : 'CompTactic'}
         >
           Comp<span className="brand-accent text-highlight">Tactic</span>
-        </div>
+        </button>
         {roomId && (
           <span className="room-chip" title="Room code">
             {roomId}
@@ -327,22 +332,6 @@ export default function App() {
         >
           Entry
         </button>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={onNewSession}
-            className="btn btn-ghost text-xs hidden sm:inline-flex gap-1"
-            title="New tactic session (fresh room)"
-          >
-            <span className="text-highlight">+</span>
-            New session
-          </button>
-        )}
-        {canEdit && (
-          <button type="button" onClick={onNewSession} className="btn btn-icon sm:hidden shrink-0" title="New session">
-            +
-          </button>
-        )}
         <button
           type="button"
           onClick={() => {
@@ -690,7 +679,7 @@ function UserMenu({ email, onSignOut }: { email: string; onSignOut: () => void }
         title={email}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="h-8 w-8 rounded-full bg-highlight text-white text-sm font-semibold grid place-items-center cursor-pointer hover:bg-blue-500 transition-colors"
+        className="h-8 w-8 rounded-full bg-highlight text-zinc-950 text-sm font-semibold grid place-items-center cursor-pointer hover:bg-amber-400 transition-colors"
       >
         {initial}
       </button>

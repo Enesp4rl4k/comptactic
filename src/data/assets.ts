@@ -28,9 +28,12 @@ export const ASSETS: AssetDef[] = [
   { id: 'ammo', name: 'Ammo Crate', category: 'deployable', glyph: '📦', icon: 'deployables/deployable_ammocrate', shape: 'square', teamColored: true },
   { id: 'mortar', name: 'Mortar', category: 'deployable', glyph: '🧨', icon: 'deployables/deployable_mortars', shape: 'circle', teamColored: true },
   { id: 'hmg', name: 'HMG Emplacement', category: 'deployable', glyph: '🔫', icon: 'deployables/deployable_HMG', shape: 'circle', teamColored: true },
+  { id: 'gmg', name: 'Auto GL', category: 'deployable', glyph: '💥', icon: 'deployables/deployable_GMG', shape: 'circle', teamColored: true },
   { id: 'tow', name: 'TOW / ATGM', category: 'deployable', glyph: '🚀', icon: 'deployables/deployable_anti_tank_gun', shape: 'circle', teamColored: true },
-  { id: 'helipad', name: 'Helipad', category: 'deployable', glyph: '🚁', icon: 'deployables/deployable_helipad', shape: 'square', teamColored: true },
+  // id kept for saved plans — was helipad; comp AA nest (SquadCalc icon)
+  { id: 'helipad', name: 'AA Gun', category: 'deployable', glyph: '🛡️', icon: 'deployables/deployable_AntiAirGun', shape: 'circle', teamColored: true },
   { id: 'rally', name: 'Rally Point', category: 'deployable', glyph: '🟢', icon: 'deployables/rallypoint', shape: 'circle', teamColored: true },
+  { id: 'mine', name: 'Minefield', category: 'deployable', glyph: '⚠️', icon: 'deployables/map_mine', shape: 'circle', teamColored: true },
 
   // --- Vehicles ---
   { id: 'logi', name: 'Logistics Truck', category: 'vehicle', glyph: '🚚', icon: 'vehicles/map_truck_logistics', shape: 'diamond', teamColored: true },
@@ -40,7 +43,8 @@ export const ASSETS: AssetDef[] = [
   { id: 'ifv', name: 'IFV', category: 'vehicle', glyph: '🚜', icon: 'vehicles/map_trackedifv', shape: 'diamond', teamColored: true },
   { id: 'mbt', name: 'Main Battle Tank', category: 'vehicle', glyph: '🛡️', icon: 'vehicles/map_tank', shape: 'diamond', teamColored: true },
   { id: 'heli_trans', name: 'Transport Heli', category: 'vehicle', glyph: '🚁', icon: 'vehicles/map_transporthelo', shape: 'diamond', teamColored: true },
-  { id: 'heli_atk', name: 'Attack Heli', category: 'vehicle', glyph: '🚁', icon: 'vehicles/map_attackhelo', shape: 'diamond', teamColored: true },
+  // id kept for saved plans — was attack heli; comp AT jeep / tech (SquadCalc icon)
+  { id: 'heli_atk', name: 'AT Jeep', category: 'vehicle', glyph: '🚙', icon: 'vehicles/map_jeep_antitank', shape: 'diamond', teamColored: true },
   { id: 'boat', name: 'Boat / RHIB', category: 'vehicle', glyph: '🚤', icon: 'vehicles/map_boat', shape: 'diamond', teamColored: true },
 
   // --- Infantry / squads ---

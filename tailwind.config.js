@@ -14,10 +14,10 @@ export default {
         panel2: '#1c1c1f',
         edge: '#2a2a2e',
         edge2: '#36363c',
-        // accent — tactical slate + highlight for primary actions
+        // accent — Squad-like: charcoal surfaces + amber highlight
         accent: '#52525b',
-        highlight: '#3b82f6',
-        success: '#22c55e',
+        highlight: '#ca8a04',
+        success: '#ca8a04',
       },
       fontFamily: {
         sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],

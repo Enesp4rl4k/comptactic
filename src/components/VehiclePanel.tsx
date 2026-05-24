@@ -57,7 +57,7 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
         )}
       </div>
 
-      <div className="flex flex-col gap-3 p-4 max-w-2xl mx-auto w-full">
+      <div className="flex flex-wrap gap-3 p-4 items-start content-start w-full min-h-[5.75rem]">
         {vehicles.length === 0 && (
           <div className="text-[11px] text-gray-600 px-1 py-2">
             No vehicles yet.{!readOnly && ' Use “+ Add Vehicle”.'}
@@ -120,7 +120,7 @@ function VehicleCard({
 
   return (
     <div
-      className={`w-full rounded border bg-panel2 p-2 transition-colors ${
+      className={`shrink-0 w-56 rounded border bg-panel2 p-2 transition-colors ${
         dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
       }`}
       onDragOver={

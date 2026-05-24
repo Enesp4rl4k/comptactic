@@ -14,7 +14,7 @@ function memberInitials(name: string): string {
   return name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || '?'
 }
 
-// Line-up: squads and vehicles stacked vertically (no horizontal scroll).
+// Line-up: squads side by side; wrap to the next row when the viewport is full.
 export default function LineupGrid() {
   const mapId = useBoardStore((s) => s.mapId)
   const layerId = useBoardStore((s) => s.layerId)
@@ -61,7 +61,7 @@ export default function LineupGrid() {
               </div>
             </div>
           ) : (
-            <div className="lineup-stack mx-auto w-full max-w-2xl flex flex-col gap-3">
+            <div className="flex flex-wrap gap-3 items-start content-start w-full">
               {squads.map((sq) => (
                 <SquadColumn key={sq.id} squad={sq} />
               ))}
@@ -104,7 +104,7 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
 
   return (
     <div
-      className={`w-full rounded border bg-panel overflow-hidden transition-colors ${
+      className={`shrink-0 w-56 rounded border bg-panel overflow-hidden transition-colors ${
         dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
       }`}
       onDragOver={(e) => {

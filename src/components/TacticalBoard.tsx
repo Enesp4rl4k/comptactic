@@ -24,6 +24,12 @@ import { ASSET_BY_ID } from '../data/assets'
 import { useBoardViewport, MAP_SIZE } from '../hooks/useBoardViewport'
 import StaticMapLayer from './StaticMapLayer'
 import { useRafThrottle } from '../lib/useRafThrottle'
+import {
+  beginRotateTransform,
+  consumeRotateTransform,
+  endRotateTransform,
+  isRotateTransform,
+} from '../lib/konvaTransformMode'
 import type { BoardElement, IconElement, PolyElement, RangeElement, ToolId } from '../types'
 
 export { MAP_SIZE }
@@ -639,6 +645,25 @@ export default function TacticalBoard({ readOnly = false }: { readOnly?: boolean
             rotateEnabled
             keepRatio={false}
             boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8 ? oldBox : newBox)}
+            onTransformStart={() => {
+              const anchor = trRef.current?.getActiveAnchor()
+              if (anchor === 'rotater') beginRotateTransform()
+            }}
+            onTransform={() => {
+              if (!isRotateTransform()) return
+              const tr = trRef.current
+              if (!tr) return
+              const els = useBoardStore.getState().elements
+              for (const node of tr.nodes()) {
+                const el = els[node.id()]
+                if (el?.type === 'icon') {
+                  const s = (el as IconElement).scale
+                  node.scaleX(s)
+                  node.scaleY(s)
+                }
+              }
+            }}
+            onTransformEnd={() => endRotateTransform()}
           />
         </Layer>
 
@@ -1073,10 +1098,17 @@ function IconView({
   const onDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => commitXYDrag(e.target, el, change)
   const onTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
     const node = e.target
-    const s = node.scaleX()
-    node.scaleX(1)
-    node.scaleY(1)
-    change({ x: node.x(), y: node.y(), scale: Math.max(0.4, el.scale * s), rotation: node.rotation() } as Partial<BoardElement>)
+    const rotation = node.rotation()
+    if (consumeRotateTransform()) {
+      node.scaleX(el.scale)
+      node.scaleY(el.scale)
+      change({ x: node.x(), y: node.y(), scale: el.scale, rotation } as Partial<BoardElement>)
+      return
+    }
+    const s = Math.max(0.4, (node.scaleX() + node.scaleY()) / 2)
+    node.scaleX(s)
+    node.scaleY(s)
+    change({ x: node.x(), y: node.y(), scale: s, rotation } as Partial<BoardElement>)
   }
 
   const groupProps = {

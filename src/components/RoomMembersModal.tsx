@@ -15,7 +15,7 @@ function RoleBadge({ role, host }: { role: RoomRole; host?: boolean }) {
   return (
     <span
       className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase ${
-        role === 'editor' ? 'bg-highlight/20 text-blue-300' : 'bg-zinc-600/30 text-zinc-400'
+        role === 'editor' ? 'bg-highlight/20 text-amber-200' : 'bg-zinc-600/30 text-zinc-400'
       }`}
     >
       {role === 'editor' ? 'Editor' : 'View'}
