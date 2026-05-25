@@ -278,17 +278,6 @@ body {
     box-shadow: 0 0 10px rgb(var(--ui-highlight-rgb) / 0.12);
   }
 
-  /* Site credit */
-  .site-credit {
-    @apply fixed z-10 left-3 bottom-2 sm:bottom-2.5 text-[10px] font-medium tracking-widest text-zinc-600/80 select-none pointer-events-none;
-    font-family: theme('fontFamily.display');
-  }
-  @media (max-width: 639px) {
-    .site-credit {
-      bottom: 3.25rem;
-    }
-  }
-
   /* Landing — Squad blur + black / gray / amber / red */
   .home-screen {
     @apply relative min-h-full flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden px-4 py-12 sm:py-16;

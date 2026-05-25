@@ -25,7 +25,7 @@ import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { createNewRoom } from './lib/collab'
-import { createAndEnterRoom, joinExistingRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
+import { buildRoomJoinUrl, createAndEnterRoom, joinExistingRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
 import { useCollabSync } from './hooks/useCollabSync'
 import CollabBanner from './components/CollabBanner'
 import RoomMembersModal from './components/RoomMembersModal'
@@ -192,15 +192,35 @@ export default function App() {
     flash('New tactic session — new room opened')
   }
 
-  const copyLink = async (url: string, msg: string) => {
+  const shareClipboard = (url: string, room: string | null) =>
+    room ? `Room code: ${room}\n\n${url}` : url
+
+  const copyLink = async (url: string, msg: string, opts?: { roomCode?: boolean }) => {
+    const text = opts?.roomCode !== false && roomId ? shareClipboard(url, roomId) : url
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(text)
       history.replaceState(null, '', url)
       flash(msg)
     } catch {
       history.replaceState(null, '', url)
       flash('Link written to the address bar')
     }
+  }
+
+  const onCopyRoomCode = async () => {
+    if (!roomId) return
+    try {
+      await navigator.clipboard.writeText(roomId)
+      flash('Room code copied')
+    } catch {
+      flash(roomId)
+    }
+  }
+
+  const onCopyRoomJoinLink = async (viewOnly: boolean) => {
+    if (!roomId) return
+    const url = buildRoomJoinUrl(roomId, { viewOnly })
+    await copyLink(url, viewOnly ? 'View-only room link copied (with code)' : 'Room join link copied (with code)')
   }
 
   // Share = open the plan AND join the same live room, so opening the link starts
@@ -223,12 +243,12 @@ export default function App() {
 
   const onShareEdit = async () => {
     const url = await buildShareUrl(false)
-    await copyLink(url, 'Room link copied — host grants edit access in Members')
+    await copyLink(url, 'Plan + room link copied (room code included)')
   }
 
   const onShareView = async () => {
     const url = await buildShareUrl(true)
-    await copyLink(url, 'View-only link copied')
+    await copyLink(url, 'View-only link copied (room code included)')
   }
 
   // Save the current plan to the cloud (create or update).
@@ -404,7 +424,15 @@ export default function App() {
               if (!ok) flash('Open the Board with a map first')
             }}
           />
-          {(canEdit || host) && <ShareMenu onEdit={onShareEdit} onView={onShareView} />}
+          {(canEdit || host) && (
+            <ShareMenu
+              roomId={roomId}
+              onCopyRoomCode={onCopyRoomCode}
+              onCopyRoomJoin={onCopyRoomJoinLink}
+              onEdit={onShareEdit}
+              onView={onShareView}
+            />
+          )}
           {isSupabaseConfigured && (
             <button className="btn gap-1.5" onClick={() => setPlansOpen(true)} title="Cloud plans">
               <IconCloud size={15} />
@@ -481,7 +509,9 @@ export default function App() {
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
       <RoomMembersModal
         open={membersOpen}
+        roomId={roomId}
         onClose={() => setMembersOpen(false)}
+        onCopyRoomCode={onCopyRoomCode}
         onCopyEditLink={() => {
           void onShareEdit()
         }}
@@ -497,7 +527,6 @@ export default function App() {
       </nav>
 
       {toast && <div className="toast">{toast}</div>}
-      <span className="site-credit" aria-hidden="true">Z1roNNN</span>
     </div>
   )
 }
@@ -554,7 +583,19 @@ function OnlineBar({ onOpenMembers }: { onOpenMembers: () => void }) {
   )
 }
 
-function ShareMenu({ onEdit, onView }: { onEdit: () => void; onView: () => void }) {
+function ShareMenu({
+  roomId,
+  onCopyRoomCode,
+  onCopyRoomJoin,
+  onEdit,
+  onView,
+}: {
+  roomId: string
+  onCopyRoomCode: () => void
+  onCopyRoomJoin: (viewOnly: boolean) => void
+  onEdit: () => void
+  onView: () => void
+}) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLButtonElement>(null)
   const run = (fn: () => void) => {
@@ -568,19 +609,28 @@ function ShareMenu({ onEdit, onView }: { onEdit: () => void; onView: () => void 
         type="button"
         className="btn btn-success gap-1"
         onClick={() => setOpen((v) => !v)}
-        title="Share links"
+        title="Share room code and links"
         aria-expanded={open}
         aria-haspopup="menu"
       >
         Share
         <IconChevronDown className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
       </button>
-      <DropdownMenuPortal open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} className="w-56">
+      <DropdownMenuPortal open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} className="w-64">
+        <div className="px-3 py-2 border-b border-edge/60 text-[11px] text-zinc-500">
+          Room <span className="font-mono text-zinc-300">{roomId}</span>
+        </div>
+        <button type="button" className="dropdown-item" onClick={() => run(onCopyRoomCode)}>
+          Copy room code
+        </button>
+        <button type="button" className="dropdown-item" onClick={() => run(() => onCopyRoomJoin(false))}>
+          Copy room join link
+        </button>
         <button type="button" className="dropdown-item" onClick={() => run(onEdit)}>
-          Room link · host grants edit
+          Copy plan + room link
         </button>
         <button type="button" className="dropdown-item" onClick={() => run(onView)}>
-          View-only link
+          Copy view-only link
         </button>
       </DropdownMenuPortal>
     </>

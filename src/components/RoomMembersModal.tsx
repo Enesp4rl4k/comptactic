@@ -3,7 +3,9 @@ import type { RoomRole } from '../lib/roomPolicy'
 
 interface Props {
   open: boolean
+  roomId: string
   onClose: () => void
+  onCopyRoomCode: () => void
   onCopyEditLink: () => void
   onCopyViewLink: () => void
 }
@@ -23,7 +25,7 @@ function RoleBadge({ role, host }: { role: RoomRole; host?: boolean }) {
   )
 }
 
-export default function RoomMembersModal({ open, onClose, onCopyEditLink, onCopyViewLink }: Props) {
+export default function RoomMembersModal({ open, roomId, onClose, onCopyRoomCode, onCopyEditLink, onCopyViewLink }: Props) {
   const peers = usePresence((s) => s.peers)
   const name = usePresence((s) => s.name)
   const color = usePresence((s) => s.color)
@@ -115,19 +117,26 @@ export default function RoomMembersModal({ open, onClose, onCopyEditLink, onCopy
           </div>
 
           <div className="rounded-lg border border-edge bg-panel2/50 p-3 space-y-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Invite links</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Invite</div>
+            <div className="flex items-center gap-2 rounded border border-edge bg-panel px-2 py-1.5">
+              <span className="text-[10px] uppercase text-zinc-500 shrink-0">Code</span>
+              <span className="font-mono text-sm text-zinc-200 truncate flex-1">{roomId}</span>
+              <button type="button" className="btn h-7 px-2 text-xs shrink-0" onClick={onCopyRoomCode}>
+                Copy
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn btn-success text-xs" onClick={onCopyViewLink}>
-                Copy view link
+                View-only link
               </button>
               {host && (
                 <button type="button" className="btn text-xs" onClick={onCopyEditLink}>
-                  Copy edit link
+                  Plan + room link
                 </button>
               )}
             </div>
             <p className="text-[11px] text-zinc-600">
-              View link is always read-only. Edit link joins the room; you decide who can change the plan.
+              Links include the room code. View-only is read-only; plan link syncs the tactic and live room.
             </p>
           </div>
         </div>

@@ -71,6 +71,16 @@ export function leaveToHome() {
   history.replaceState(null, '', url.toString())
 }
 
+/** Shareable URL to join a live room (no plan snapshot). */
+export function buildRoomJoinUrl(roomId: string, opts?: { viewOnly?: boolean }) {
+  const url = new URL(window.location.origin + window.location.pathname)
+  url.search = ''
+  url.hash = ''
+  url.searchParams.set('room', roomId.trim())
+  if (opts?.viewOnly) url.searchParams.set('view', '1')
+  return url.toString()
+}
+
 export function parseRoomInput(raw: string): ParsedRoomEntry | null {
   const t = raw.trim()
   if (!t) return null

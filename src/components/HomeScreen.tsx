@@ -133,9 +133,6 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
       <p className="home-attribution" aria-hidden="true">
         Background: Squad · joinsquad.com
       </p>
-      <span className="site-credit" aria-hidden="true">
-        Z1roNNN
-      </span>
     </div>
   )
 }
