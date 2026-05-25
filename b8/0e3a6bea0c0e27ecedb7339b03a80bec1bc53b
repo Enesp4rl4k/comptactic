@@ -1,0 +1,63 @@
+src/data/assets.ts
+  s_ef05d5e0d2aed5::t_6c268cae88eb9a 48
+  s_ef05d5e0d2aed5::t_908dd36c89c3ac 39,41
+  s_ef05d5e0d2aed5::t_b2e569e1f7f55d 59-61
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_51e3f466f57c37 7,25,29-31,35,92,94-108,110-112,114-118
+src/components/VehiclePanel.tsx
+  s_ef05d5e0d2aed5::t_94780c53f6ff17 2
+  s_ef05d5e0d2aed5::t_6951d2cb6894da 15
+  s_ef05d5e0d2aed5::t_588736ff0a21fa 1,5,7-14,16-17,26,36,41,43-44,47-48,52-79,82,87,90
+src/components/LineupGrid.tsx
+  s_ef05d5e0d2aed5::t_557441ec093df4 61-66
+  s_ef05d5e0d2aed5::t_0c6ca849b2ec92 85
+  s_ef05d5e0d2aed5::t_f3ae8a33c39f69 116-139
+  s_ef05d5e0d2aed5::t_2abc8584ea98fb 72
+  s_ef05d5e0d2aed5::t_8adef43ac0fcb9 45-51
+  s_ef05d5e0d2aed5::t_7c3426ff3c169e 165-173,212-213
+  s_ef05d5e0d2aed5::t_285393f2635280 18
+  s_ef05d5e0d2aed5::t_dfb483df3da485 325-326
+  s_ef05d5e0d2aed5::t_a33e3965fcbf41 217,219,221,227-229,234-236
+  s_ef05d5e0d2aed5::t_7ae8fbe6f23f48 253-260,275,279-290
+  s_ef05d5e0d2aed5::t_61270250b5505b 78-79
+src/index.css
+  s_ef05d5e0d2aed5::t_2c5d009c3b5079 340-342,344-345
+  s_ef05d5e0d2aed5::t_b0827a77516137 305
+  s_ef05d5e0d2aed5::t_903218e86c5689 351-352
+  s_ef05d5e0d2aed5::t_dd63251a3f31b1 447,454-461,464
+  s_ef05d5e0d2aed5::t_8e55e9b348e1d0 547-549,551-556
+src/lib/roomEntry.ts
+  s_ef05d5e0d2aed5::t_4eb3bbb5f7a299 3-7,43-44,51-52,54-58,62-68,74,77-79,81-91,93-95,100-102
+src/App.tsx
+  s_ef05d5e0d2aed5::t_c8a57dbe64fe36 686
+  s_ef05d5e0d2aed5::t_ee279ba45e9aca 273-274
+  s_ef05d5e0d2aed5::t_2286e7849c70a0 319
+  s_ef05d5e0d2aed5::t_a7031198d246e3 669-685,687-689
+  s_ef05d5e0d2aed5::t_f5784ce525322a 28
+  s_ef05d5e0d2aed5::t_0c07701fb5f245 448,450-451
+src/lib/useLayerInfo.ts
+  s_ef05d5e0d2aed5::t_b6fd993d2f354a 63
+src/components/PlayerPool.tsx
+  s_ef05d5e0d2aed5::t_523e34d2d1c0fc 7
+  s_ef05d5e0d2aed5::t_948917bf36834a 115
+  s_ef05d5e0d2aed5::t_5dec47ab1f83cb 60-93,95
+  s_ef05d5e0d2aed5::t_14205fdc83659f 122-134
+  s_ef05d5e0d2aed5::t_46e6737b8bf5c0 143,151
+  s_ef05d5e0d2aed5::t_ba947862fb3473 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "b80e3a6bea0c0e27ecedb7339b03a80bec1bc53b",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
