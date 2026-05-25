@@ -8,6 +8,8 @@ interface Props {
   children: ReactNode
   className?: string
   align?: 'right' | 'left'
+  /** Flip above anchor when there is not enough space below (e.g. bottom toolbar). */
+  placement?: 'auto' | 'above' | 'below'
 }
 
 /** Portal dropdown — avoids header overflow/backdrop-filter clipping. */
@@ -18,6 +20,7 @@ export function DropdownMenuPortal({
   children,
   className = '',
   align = 'right',
+  placement = 'below',
 }: Props) {
   const [style, setStyle] = useState<CSSProperties>({})
 
@@ -28,11 +31,32 @@ export function DropdownMenuPortal({
       const el = anchorRef.current
       if (!el) return
       const r = el.getBoundingClientRect()
-      const top = r.bottom + 6
-      if (align === 'right') {
-        setStyle({ top, right: Math.max(8, window.innerWidth - r.right), minWidth: Math.max(r.width, 208) })
+      const gap = 6
+      const maxMenu = Math.min(window.innerHeight * 0.7, 352)
+      const spaceBelow = window.innerHeight - r.bottom - gap - 8
+      const spaceAbove = r.top - gap - 8
+      const openAbove =
+        placement === 'above' ||
+        (placement === 'auto' && spaceBelow < 200 && spaceAbove > spaceBelow)
+
+      const maxHeight = Math.min(maxMenu, openAbove ? spaceAbove : spaceBelow)
+      const horizontal =
+        align === 'right'
+          ? { right: Math.max(8, window.innerWidth - r.right), minWidth: Math.max(r.width, 208) }
+          : { left: Math.max(8, r.left), minWidth: Math.max(r.width, 208) }
+
+      if (openAbove) {
+        setStyle({
+          ...horizontal,
+          bottom: window.innerHeight - r.top + gap,
+          maxHeight,
+        })
       } else {
-        setStyle({ top, left: Math.max(8, r.left), minWidth: Math.max(r.width, 208) })
+        setStyle({
+          ...horizontal,
+          top: r.bottom + gap,
+          maxHeight,
+        })
       }
     }
 
@@ -43,7 +67,7 @@ export function DropdownMenuPortal({
       window.removeEventListener('scroll', update, true)
       window.removeEventListener('resize', update)
     }
-  }, [open, anchorRef, align])
+  }, [open, anchorRef, align, placement])
 
   if (!open) return null
 

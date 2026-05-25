@@ -1,20 +1,25 @@
 import { useRef, useState } from 'react'
-import { ASSET_BY_ID, iconUrl, type AssetDef } from '../data/assets'
+import { ASSETS, ASSET_BY_ID, iconUrl, type AssetDef } from '../data/assets'
 import { useBoardStore } from '../store/useBoardStore'
 import type { VehicleAssignment } from '../types'
 import { DropdownMenuPortal } from './ui/DropdownMenu'
 
-/** Lineup vehicle picker order — logistics/transport first (most used in briefs). */
-const VEHICLE_PICKER: { label: string; ids: string[] }[] = [
-  {
-    label: 'Logistics & transport',
-    ids: ['logi', 'transport', 'mrap', 'heli_trans', 'boat'],
-  },
-  {
-    label: 'Armor & air',
-    ids: ['apc', 'ifv', 'mbt', 'heli_atk', 'cas_heli'],
-  },
-]
+const ALL_VEHICLES = ASSETS.filter((a) => a.category === 'vehicle')
+
+/** Pinned at top — added on top of the full catalog, not instead of it. */
+const VEHICLE_PINNED = ['logi', 'transport', 'mrap'] as const
+
+function buildVehiclePicker(): { label: string; ids: string[] }[] {
+  const pinnedSet = new Set<string>(VEHICLE_PINNED)
+  const pinned = VEHICLE_PINNED.map((id) => id).filter((id) => ASSET_BY_ID[id])
+  const rest = ALL_VEHICLES.map((a) => a.id).filter((id) => !pinnedSet.has(id))
+  return [
+    { label: 'Quick picks', ids: pinned },
+    { label: 'All vehicles', ids: rest },
+  ]
+}
+
+const VEHICLE_PICKER = buildVehiclePicker()
 
 // Vehicle assignments: which squads / players crew or ride each asset, shown
 // with symbols (vehicle glyph + colored squad chips + crew note).
@@ -49,8 +54,14 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
             >
               + Add Vehicle
             </button>
-            <DropdownMenuPortal open={adding} onClose={() => setAdding(false)} anchorRef={addBtnRef} align="right">
-              <div className="max-h-[min(70vh,22rem)] overflow-y-auto py-1">
+            <DropdownMenuPortal
+              open={adding}
+              onClose={() => setAdding(false)}
+              anchorRef={addBtnRef}
+              align="right"
+              placement="auto"
+            >
+              <div className="overflow-y-auto py-1">
                 {VEHICLE_PICKER.map((group) => (
                   <div key={group.label}>
                     <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -87,7 +98,7 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
       <div className="flex flex-wrap gap-3 p-4 items-start content-start w-full min-h-[5.75rem] max-h-[40vh] overflow-y-auto">
         {vehicles.length === 0 && (
           <div className="text-[11px] text-gray-600 px-1 py-2">
-            No vehicles yet.{!readOnly && ' Use “+ Add Vehicle” — logi, transport, MRAP are under Logistics & transport.'}
+            No vehicles yet.{!readOnly && ' Use “+ Add Vehicle”.'}
           </div>
         )}
         {vehicles.map((v) => (
