@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { parseRoomInput } from '../lib/roomEntry'
+import { formatRecentRoomWhen, loadRecentRooms, removeRecentRoom, type RecentRoom } from '../lib/recentRooms'
+import { useAuth } from '../lib/useAuth'
 import ThemeMenu from './ThemeMenu'
 
 interface Props {
@@ -21,8 +23,14 @@ const BG_SLIDES = [
 const NOTES = ['Live map sync', 'Line-up & vehicles', 'Host sets edit access']
 
 export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
+  const { user } = useAuth()
   const [joinInput, setJoinInput] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [recent, setRecent] = useState<RecentRoom[]>(() => loadRecentRooms(user?.id))
+
+  useEffect(() => {
+    setRecent(loadRecentRooms(user?.id))
+  }, [user?.id])
 
   const onJoin = () => {
     const parsed = parseRoomInput(joinInput)
@@ -31,8 +39,18 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
       return
     }
     setJoinError(null)
-    // view=1 only from host’s view-only invite link — plain room code uses host policy
     onJoinRoom(parsed.room, parsed.viewOnly)
+  }
+
+  const joinRecent = (r: RecentRoom) => {
+    setJoinError(null)
+    onJoinRoom(r.id, !!r.viewOnly)
+  }
+
+  const dismissRecent = (e: React.MouseEvent, roomId: string) => {
+    e.stopPropagation()
+    removeRecentRoom(roomId, user?.id)
+    setRecent(loadRecentRooms(user?.id))
   }
 
   return (
@@ -82,6 +100,41 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
             Open tactic room
           </button>
         </section>
+
+        {recent.length > 0 && (
+          <section className="home-recent" aria-label="Recent rooms">
+            <div className="home-recent-head">
+              <h2 className="home-recent-title">Recent rooms</h2>
+              <span className="home-recent-meta">{user ? 'Your account' : 'This device'}</span>
+            </div>
+            <ul className="home-recent-list">
+              {recent.map((r) => (
+                <li key={r.id}>
+                  <button type="button" className="home-recent-item" onClick={() => joinRecent(r)}>
+                    <span className="home-recent-code">{r.id}</span>
+                    <span className="home-recent-detail">
+                      {r.label && <span className="home-recent-label">{r.label}</span>}
+                      <span className="home-recent-when">
+                        {r.host && <span className="home-recent-badge">Host</span>}
+                        {r.viewOnly && <span className="home-recent-badge home-recent-badge--view">View</span>}
+                        <span>{formatRecentRoomWhen(r.at)}</span>
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="home-recent-remove"
+                    onClick={(e) => dismissRecent(e, r.id)}
+                    aria-label={`Remove ${r.id} from recent`}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <div className="home-divider">
           <span>or join</span>

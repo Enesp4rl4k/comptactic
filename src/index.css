@@ -415,6 +415,50 @@ body {
     outline: 2px solid rgb(var(--ui-highlight-rgb) / 0.9);
     outline-offset: 2px;
   }
+  .home-recent {
+    @apply mt-6 rounded-xl border border-zinc-700/45 bg-zinc-950/60 backdrop-blur-sm p-4;
+  }
+  .home-recent-head {
+    @apply flex items-baseline justify-between gap-2 mb-3;
+  }
+  .home-recent-title {
+    @apply text-sm font-semibold text-zinc-200;
+  }
+  .home-recent-meta {
+    @apply text-[10px] uppercase tracking-wide text-zinc-600;
+  }
+  .home-recent-list {
+    @apply list-none p-0 m-0 flex flex-col gap-1.5;
+  }
+  .home-recent-list li {
+    @apply flex items-stretch gap-1;
+  }
+  .home-recent-item {
+    @apply flex-1 min-w-0 flex items-center gap-3 rounded-lg border border-edge/80 bg-panel2/40 px-3 py-2.5 text-left
+           transition-colors hover:bg-edge/60 hover:border-edge2 cursor-pointer;
+  }
+  .home-recent-code {
+    @apply font-mono text-sm font-semibold text-zinc-100 shrink-0;
+  }
+  .home-recent-detail {
+    @apply min-w-0 flex flex-col gap-0.5;
+  }
+  .home-recent-label {
+    @apply text-xs text-zinc-400 truncate block;
+  }
+  .home-recent-when {
+    @apply flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-600;
+  }
+  .home-recent-badge {
+    @apply px-1 py-px rounded text-[9px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-300/90;
+  }
+  .home-recent-badge--view {
+    @apply bg-zinc-600/30 text-zinc-400;
+  }
+  .home-recent-remove {
+    @apply shrink-0 w-8 rounded-lg border border-transparent text-zinc-600 hover:text-red-400 hover:border-edge hover:bg-panel2/80
+           cursor-pointer text-lg leading-none;
+  }
   .home-divider {
     @apply flex items-center gap-3 my-6 text-xs text-zinc-600;
   }

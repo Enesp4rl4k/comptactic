@@ -25,6 +25,7 @@ import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { createNewRoom } from './lib/collab'
+import { rememberRecentRoom } from './lib/recentRooms'
 import { buildRoomJoinUrl, createAndEnterRoom, joinExistingRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
 import { useCollabSync } from './hooks/useCollabSync'
 import CollabBanner from './components/CollabBanner'
@@ -113,6 +114,18 @@ export default function App() {
     const p = usePresence.getState()
     if (!p.name && user?.email) p.setName(user.email.split('@')[0])
   }, [user])
+
+  useEffect(() => {
+    if (!roomId) return
+    const isHost = localStorage.getItem('ct:host:' + roomId) === '1'
+    const viewOnlyLink = new URLSearchParams(window.location.search).get('view') === '1'
+    rememberRecentRoom(roomId, {
+      authUserId: user?.id,
+      host: isHost,
+      viewOnly: viewOnlyLink,
+      label: currentTitle !== 'Untitled plan' ? currentTitle : undefined,
+    })
+  }, [roomId, user?.id, currentTitle])
 
   // autosave (debounced)
   useEffect(() => {
