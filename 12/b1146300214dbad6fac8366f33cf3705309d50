@@ -1,0 +1,30 @@
+src/components/RoomMembersModal.tsx
+  s_ef05d5e0d2aed5::t_72484287c826a9 6,8
+  s_ef05d5e0d2aed5::t_312f00f95ac143 28
+  s_ef05d5e0d2aed5::t_94d5db891bf5cd 120-127,130,134,139
+src/lib/roomEntry.ts
+  s_ef05d5e0d2aed5::t_f20fb6b6ba5d6b 74-83
+src/App.tsx
+  s_ef05d5e0d2aed5::t_ab3d66cff76182 195-199,201,210-223
+  s_ef05d5e0d2aed5::t_aecd42854533a4 586-598,612,619-628,630,633
+  s_ef05d5e0d2aed5::t_da804c6f2d55cd 512,514
+  s_ef05d5e0d2aed5::t_f9dd140db27b88 28
+  s_ef05d5e0d2aed5::t_762d03cc44e82f 246,251
+  s_ef05d5e0d2aed5::t_2714b8c85a3104 427-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "12b1146300214dbad6fac8366f33cf3705309d50",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
