@@ -1,0 +1,26 @@
+src/App.tsx
+  s_ef05d5e0d2aed5::t_019aae9b6914c6 118-129
+  s_ef05d5e0d2aed5::t_d6bd121c7f89b4 28
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_71dab14c3bea97 1,3-4,26,29-33,45-55,104-137
+src/index.css
+  s_ef05d5e0d2aed5::t_f355b8264813f3 418-461
+src/lib/recentRooms.ts
+  s_ef05d5e0d2aed5::t_4471cc164c1555 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "a4eb11f471e0f3996052b35cd56b3a488229d709",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
