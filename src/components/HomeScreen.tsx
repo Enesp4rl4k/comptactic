@@ -22,7 +22,6 @@ const NOTES = ['Live map sync', 'Line-up & vehicles', 'Host sets edit access']
 
 export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
   const [joinInput, setJoinInput] = useState('')
-  const [joinViewOnly, setJoinViewOnly] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
 
   const onJoin = () => {
@@ -32,7 +31,8 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
       return
     }
     setJoinError(null)
-    onJoinRoom(parsed.room, parsed.viewOnly || joinViewOnly)
+    // view=1 only from host’s view-only invite link — plain room code uses host policy
+    onJoinRoom(parsed.room, parsed.viewOnly)
   }
 
   return (
@@ -105,14 +105,9 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
             autoComplete="off"
             spellCheck={false}
           />
-          <label className="home-join-viewonly">
-            <input
-              type="checkbox"
-              checked={joinViewOnly}
-              onChange={(e) => setJoinViewOnly(e.target.checked)}
-            />
-            <span>Join as viewer only (no edits)</span>
-          </label>
+          <p className="home-join-hint">
+            Room code: host chooses viewer or editor in Members. View-only only if you paste a view invite link.
+          </p>
           <button type="button" className="home-join-submit" onClick={onJoin}>
             Join room
           </button>

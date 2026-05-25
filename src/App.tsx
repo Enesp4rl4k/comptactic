@@ -290,8 +290,8 @@ export default function App() {
           const id = createAndEnterRoom()
           setRoomId(id)
         }}
-        onJoinRoom={(id, viewOnly) => {
-          joinExistingRoom(id, { viewOnly })
+        onJoinRoom={(id, viewOnlyLink) => {
+          joinExistingRoom(id, viewOnlyLink ? { viewOnly: true } : undefined)
           setRoomId(id)
         }}
       />

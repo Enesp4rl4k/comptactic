@@ -440,11 +440,8 @@ body {
     border-color: rgb(var(--ui-highlight-rgb) / 0.45);
     box-shadow: 0 0 0 1px rgb(var(--ui-highlight-rgb) / 0.2);
   }
-  .home-join-viewonly {
-    @apply flex items-center gap-2 text-sm text-zinc-500 mb-4 cursor-pointer select-none;
-  }
-  .home-join-viewonly input {
-    @apply rounded border-zinc-600 accent-highlight;
+  .home-join-hint {
+    @apply text-[11px] leading-snug text-zinc-500 mb-4;
   }
   .home-join-submit {
     @apply w-full h-10 text-sm font-semibold rounded-lg cursor-pointer bg-zinc-900/90 text-zinc-100;
