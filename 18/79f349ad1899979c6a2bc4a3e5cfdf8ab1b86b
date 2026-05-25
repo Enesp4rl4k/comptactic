@@ -1,0 +1,24 @@
+src/App.tsx
+  s_ef05d5e0d2aed5::t_71e49c277ab819 293-294
+src/components/HomeScreen.tsx
+  s_ef05d5e0d2aed5::t_7d636595490693 34-35
+  s_ef05d5e0d2aed5::t_cb09d8c37a4c09 108-110
+src/index.css
+  s_ef05d5e0d2aed5::t_6e36dd47b07a0e 443-444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "1879f349ad1899979c6a2bc4a3e5cfdf8ab1b86b",
+  "prompts": {},
+  "sessions": {
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
