@@ -1,5 +1,10 @@
 import { nanoid } from 'nanoid'
 
+export interface ParsedRoomEntry {
+  room: string
+  viewOnly: boolean
+}
+
 /** True when the URL already targets a session (skip landing). */
 export function shouldSkipHome(): boolean {
   const url = new URL(window.location.href)
@@ -35,16 +40,30 @@ export function resolveInitialRoomId(): string | null {
 export function createAndEnterRoom(): string {
   const room = nanoid(8)
   const url = new URL(window.location.origin + window.location.pathname)
+  url.search = ''
+  url.hash = ''
   url.searchParams.set('room', room)
   history.replaceState(null, '', url.toString())
   localStorage.setItem('ct:host:' + room, '1')
   return room
 }
 
-export function enterRoom(roomId: string) {
+export function enterRoom(roomId: string, opts?: { viewOnly?: boolean }) {
+  const id = roomId.trim()
   const url = new URL(window.location.href)
-  url.searchParams.set('room', roomId.trim())
+  url.searchParams.set('room', id)
+  if (opts?.viewOnly) url.searchParams.set('view', '1')
+  else url.searchParams.delete('view')
+  url.searchParams.delete('s')
+  url.hash = ''
   history.replaceState(null, '', url.toString())
+}
+
+/** Join an existing room as guest (never grants host). */
+export function joinExistingRoom(roomId: string, opts?: { viewOnly?: boolean }) {
+  const id = roomId.trim()
+  enterRoom(id, opts)
+  localStorage.removeItem('ct:host:' + id)
 }
 
 export function leaveToHome() {
@@ -52,19 +71,34 @@ export function leaveToHome() {
   history.replaceState(null, '', url.toString())
 }
 
-export function parseRoomInput(raw: string): string | null {
+export function parseRoomInput(raw: string): ParsedRoomEntry | null {
   const t = raw.trim()
   if (!t) return null
+
+  const base = window.location.origin + window.location.pathname
+
   try {
-    if (t.includes('://') || t.startsWith('?') || t.startsWith('/')) {
-      const base = window.location.origin + window.location.pathname
-      const url = new URL(t.startsWith('http') ? t : t.startsWith('?') ? base + t : base + (t.startsWith('/') ? t : '/' + t))
+    if (t.includes('room=') || t.includes('://') || t.startsWith('?') || t.startsWith('/')) {
+      const href = t.startsWith('http')
+        ? t
+        : t.startsWith('?')
+          ? base + t
+          : t.startsWith('/')
+            ? window.location.origin + t
+            : t.includes('room=')
+              ? `${base}?${t.replace(/^\?/, '')}`
+              : base + (t.startsWith('/') ? t : '/' + t)
+      const url = new URL(href)
       const room = url.searchParams.get('room')
-      if (room) return room
+      if (room) {
+        return { room, viewOnly: url.searchParams.get('view') === '1' }
+      }
     }
   } catch {
     /* plain code below */
   }
-  if (/^[a-zA-Z0-9_-]{6,14}$/.test(t)) return t
+
+  const code = t.replace(/\s/g, '')
+  if (/^[a-zA-Z0-9_-]{6,14}$/.test(code)) return { room: code, viewOnly: false }
   return null
 }

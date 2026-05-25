@@ -25,7 +25,7 @@ import { createShare, getShare, createPlan, updatePlan } from './lib/plans'
 import { useAuth, signOut } from './lib/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { createNewRoom } from './lib/collab'
-import { createAndEnterRoom, enterRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
+import { createAndEnterRoom, joinExistingRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
 import { useCollabSync } from './hooks/useCollabSync'
 import CollabBanner from './components/CollabBanner'
 import RoomMembersModal from './components/RoomMembersModal'
@@ -55,7 +55,7 @@ export default function App() {
   const [view, setView] = useState<'board' | 'lineup' | 'sheet'>('board')
   const [roomId, setRoomId] = useState<string | null>(() => resolveInitialRoomId())
   const [membersOpen, setMembersOpen] = useState(false)
-  const search = useMemo(() => new URLSearchParams(window.location.search), [])
+  const search = useMemo(() => new URLSearchParams(window.location.search), [roomId])
   const urlViewOnly = search.get('view') === '1'
   const embed = search.get('embed') === '1'
   const host = usePresence((s) => s.host)
@@ -270,8 +270,8 @@ export default function App() {
           const id = createAndEnterRoom()
           setRoomId(id)
         }}
-        onJoinRoom={(id) => {
-          enterRoom(id)
+        onJoinRoom={(id, viewOnly) => {
+          joinExistingRoom(id, { viewOnly })
           setRoomId(id)
         }}
       />
@@ -316,9 +316,7 @@ export default function App() {
           Comp<span className="brand-accent text-highlight">Tactic</span>
         </button>
         {roomId && (
-          <span className="room-chip" title="Room code">
-            {roomId}
-          </span>
+          <RoomCodeChip roomId={roomId} onCopy={() => flash('Room code copied')} />
         )}
         <button
           type="button"
@@ -447,10 +445,10 @@ export default function App() {
       )}
       {view === 'lineup' && (
         <div key="view-lineup" className="flex-1 min-h-0 flex flex-col overflow-y-auto animate-view-in">
-          <LayerInfoPanel />
+          <LayerInfoPanel readOnly={readOnly} />
           <SpawnTimeline />
-          <PlayerPool />
-          <LineupGrid />
+          <PlayerPool readOnly={readOnly} />
+          <LineupGrid readOnly={readOnly} />
         </div>
       )}
       {view === 'sheet' && (
@@ -665,6 +663,27 @@ function MobileTab({ label, active, onClick }: { label: string; active: boolean;
     >
       {label}
     </button>
+  )
+}
+
+function RoomCodeChip({ roomId, onCopy }: { roomId: string; onCopy: () => void }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(roomId)
+      onCopy()
+    } catch {
+      onCopy()
+    }
+  }
+  return (
+    <div className="room-chip-wrap">
+      <span className="room-chip" title="Room code">
+        {roomId}
+      </span>
+      <button type="button" className="room-chip-copy" onClick={() => void copy()} title="Copy room code">
+        Copy
+      </button>
+    </div>
   )
 }
 

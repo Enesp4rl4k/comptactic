@@ -4,7 +4,7 @@ import { parseSignupText } from '../lib/parseSignup'
 
 // Paste signed-up players (one per line or comma-separated), then distribute
 // them into squads one-by-one or auto-balance across all squads.
-export default function PlayerPool() {
+export default function PlayerPool({ readOnly = false }: { readOnly?: boolean }) {
   const pool = useBoardStore((s) => s.playerPool)
   const squads = useBoardStore((s) => s.squads)
   const addToPool = useBoardStore((s) => s.addToPool)
@@ -57,30 +57,42 @@ export default function PlayerPool() {
 
       {open && (
         <div
-          className={`p-2 space-y-2 ${dropActive ? 'ring-2 ring-accent/50 ring-inset' : ''}`}
-          onDragOver={(e) => {
-            // Browsers lowercase DataTransfer.types, so compare against the lowercase key.
-            if (Array.from(e.dataTransfer.types).map((x) => x.toLowerCase()).includes('membermove')) {
-              e.preventDefault()
-              if (!dropActive) setDropActive(true)
-            }
-          }}
-          onDragLeave={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropActive(false)
-          }}
-          onDrop={(e) => {
-            const move = e.dataTransfer.getData('memberMove')
-            if (!move) return
-            e.preventDefault()
-            setDropActive(false)
-            try {
-              const { squadId, memberId } = JSON.parse(move)
-              memberToPool(squadId, memberId)
-            } catch {
-              /* ignore */
-            }
-          }}
+          className={`p-2 space-y-2 ${!readOnly && dropActive ? 'ring-2 ring-accent/50 ring-inset' : ''}`}
+          onDragOver={
+            readOnly
+              ? undefined
+              : (e) => {
+                  if (Array.from(e.dataTransfer.types).map((x) => x.toLowerCase()).includes('membermove')) {
+                    e.preventDefault()
+                    if (!dropActive) setDropActive(true)
+                  }
+                }
+          }
+          onDragLeave={
+            readOnly
+              ? undefined
+              : (e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropActive(false)
+                }
+          }
+          onDrop={
+            readOnly
+              ? undefined
+              : (e) => {
+                  const move = e.dataTransfer.getData('memberMove')
+                  if (!move) return
+                  e.preventDefault()
+                  setDropActive(false)
+                  try {
+                    const { squadId, memberId } = JSON.parse(move)
+                    memberToPool(squadId, memberId)
+                  } catch {
+                    /* ignore */
+                  }
+                }
+          }
         >
+          {!readOnly && (
           <div className="flex gap-2">
             <textarea
               value={text}
@@ -100,21 +112,26 @@ export default function PlayerPool() {
               <button onClick={clearPool} disabled={!pool.length} className="btn h-8 px-3 text-xs">Clear</button>
             </div>
           </div>
+          )}
 
           {pool.length > 0 && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1 max-h-44 overflow-y-auto pr-1">
               {pool.map((name, i) => (
                 <div
                   key={`${name}-${i}`}
-                  draggable
-                  onDragStart={(e) => {
-                    useBoardStore.getState().setEditingLock('roster')
-                    e.dataTransfer.setData('playerName', name)
-                    e.dataTransfer.effectAllowed = 'move'
-                  }}
-                  onDragEnd={() => useBoardStore.getState().setEditingLock(null)}
-                  title={`${name} — drag onto a squad`}
-                  className="pool-chip group flex items-center gap-1.5"
+                  draggable={!readOnly}
+                  onDragStart={
+                    readOnly
+                      ? undefined
+                      : (e) => {
+                          useBoardStore.getState().setEditingLock('roster')
+                          e.dataTransfer.setData('playerName', name)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }
+                  }
+                  onDragEnd={readOnly ? undefined : () => useBoardStore.getState().setEditingLock(null)}
+                  title={readOnly ? name : `${name} — drag onto a squad`}
+                  className={`pool-chip group flex items-center gap-1.5 ${readOnly ? 'cursor-default' : ''}`}
                 >
                   <div
                     className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9px] font-bold text-white ring-1 ring-black/40"
@@ -123,6 +140,7 @@ export default function PlayerPool() {
                     {initials(name)}
                   </div>
                   <span className="flex-1 min-w-0 truncate text-[11px] text-gray-200">{name}</span>
+                  {!readOnly && (
                   <button
                     onClick={() => removeFromPool(name)}
                     title="Remove"
@@ -130,12 +148,13 @@ export default function PlayerPool() {
                   >
                     ×
                   </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {squads.length === 0 && pool.length > 0 && (
+          {!readOnly && squads.length === 0 && pool.length > 0 && (
             <div className="text-[11px] text-gray-600">Add squads first, then drag players into them.</div>
           )}
         </div>

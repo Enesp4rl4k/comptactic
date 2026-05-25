@@ -1,9 +1,20 @@
-import { useState } from 'react'
-import { ASSETS, ASSET_BY_ID, iconUrl, type AssetDef } from '../data/assets'
+import { useRef, useState } from 'react'
+import { ASSET_BY_ID, iconUrl, type AssetDef } from '../data/assets'
 import { useBoardStore } from '../store/useBoardStore'
 import type { VehicleAssignment } from '../types'
+import { DropdownMenuPortal } from './ui/DropdownMenu'
 
-const VEHICLE_ASSETS = ASSETS.filter((a) => a.category === 'vehicle')
+/** Lineup vehicle picker order — logistics/transport first (most used in briefs). */
+const VEHICLE_PICKER: { label: string; ids: string[] }[] = [
+  {
+    label: 'Logistics & transport',
+    ids: ['logi', 'transport', 'mrap', 'heli_trans', 'boat'],
+  },
+  {
+    label: 'Armor & air',
+    ids: ['apc', 'ifv', 'mbt', 'heli_atk', 'cas_heli'],
+  },
+]
 
 // Vehicle assignments: which squads / players crew or ride each asset, shown
 // with symbols (vehicle glyph + colored squad chips + crew note).
@@ -12,55 +23,71 @@ export default function VehiclePanel({ readOnly = false }: { readOnly?: boolean 
   const squads = useBoardStore((s) => s.squads)
   const addVehicle = useBoardStore((s) => s.addVehicle)
   const [adding, setAdding] = useState(false)
+  const addBtnRef = useRef<HTMLButtonElement>(null)
 
   const squadIndex = (id: string) => squads.findIndex((s) => s.id === id)
 
-  // Timing is filled by the user to describe the vehicle's route in the plan,
-  // not the layer's spawn/respawn — so just add the vehicle.
   const onAddVehicle = (a: AssetDef) => {
     addVehicle(a.id)
     setAdding(false)
   }
 
   return (
-    <div className="border-t border-edge bg-panel">
+    <div className="shrink-0 border-t border-edge bg-panel">
       <div className="panel-header">
         <span>Vehicle Assignments</span>
         <span className="text-gray-600 font-normal">· {vehicles.length}</span>
         {!readOnly && (
-          <div className="ml-auto relative">
+          <div className="ml-auto">
             <button
+              ref={addBtnRef}
+              type="button"
               onClick={() => setAdding((v) => !v)}
               className="btn btn-primary h-7 px-2 text-xs"
+              aria-expanded={adding}
+              aria-haspopup="menu"
             >
               + Add Vehicle
             </button>
-            {adding && (
-              <div className="absolute right-0 bottom-9 z-20 w-44 max-h-64 overflow-y-auto rounded border border-edge bg-panel2 shadow-lg">
-                {VEHICLE_ASSETS.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => onAddVehicle(a)}
-                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-edge"
-                  >
-                    {iconUrl(a, 'blufor') ? (
-                      <img src={iconUrl(a, 'blufor')!} alt="" className="h-5 w-5 object-contain" />
-                    ) : (
-                      <span>{a.glyph}</span>
-                    )}
-                    <span className="text-gray-200">{a.name}</span>
-                  </button>
+            <DropdownMenuPortal open={adding} onClose={() => setAdding(false)} anchorRef={addBtnRef} align="right">
+              <div className="max-h-[min(70vh,22rem)] overflow-y-auto py-1">
+                {VEHICLE_PICKER.map((group) => (
+                  <div key={group.label}>
+                    <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      {group.label}
+                    </div>
+                    {group.ids.map((id) => {
+                      const a = ASSET_BY_ID[id]
+                      if (!a) return null
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => onAddVehicle(a)}
+                          className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm hover:bg-edge"
+                        >
+                          {iconUrl(a, 'blufor') ? (
+                            <img src={iconUrl(a, 'blufor')!} alt="" className="h-5 w-5 object-contain shrink-0" />
+                          ) : (
+                            <span className="w-5 text-center shrink-0">{a.glyph}</span>
+                          )}
+                          <span className="text-gray-200">{a.name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 ))}
               </div>
-            )}
+            </DropdownMenuPortal>
           </div>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 p-4 items-start content-start w-full min-h-[5.75rem]">
+      <div className="flex flex-wrap gap-3 p-4 items-start content-start w-full min-h-[5.75rem] max-h-[40vh] overflow-y-auto">
         {vehicles.length === 0 && (
           <div className="text-[11px] text-gray-600 px-1 py-2">
-            No vehicles yet.{!readOnly && ' Use “+ Add Vehicle”.'}
+            No vehicles yet.{!readOnly && ' Use “+ Add Vehicle” — logi, transport, MRAP are under Logistics & transport.'}
           </div>
         )}
         {vehicles.map((v) => (
@@ -127,7 +154,6 @@ function VehicleCard({
         readOnly
           ? undefined
           : (e) => {
-              // Browsers lowercase DataTransfer.types, so compare against lowercase keys.
               const t = Array.from(e.dataTransfer.types).map((x) => x.toLowerCase())
               if (t.includes('vehiclemove') || t.includes('squadmove') || t.includes('membermove') || t.includes('playername')) {
                 e.preventDefault()
@@ -176,7 +202,6 @@ function VehicleCard({
         )}
       </div>
 
-      {/* squad chips */}
       <div className="flex flex-wrap gap-1 mt-2">
         {squads.length === 0 && <span className="text-[10px] text-gray-600">No squads</span>}
         {squads.map((sq) => {
@@ -200,7 +225,6 @@ function VehicleCard({
         })}
       </div>
 
-      {/* crew (dragged-in players) */}
       {(v.crew?.length ?? 0) > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5">
           {v.crew!.map((name) => (
@@ -216,7 +240,6 @@ function VehicleCard({
         </div>
       )}
 
-      {/* crew note */}
       {readOnly ? (
         v.note ? <div className="text-[11px] text-gray-400 mt-1.5">👤 {v.note}</div> : null
       ) : (
@@ -228,7 +251,6 @@ function VehicleCard({
         />
       )}
 
-      {/* spawn / respawn timing */}
       {readOnly ? (
         v.timing ? <div className="text-[11px] text-amber-300/90 mt-1">⏱ {v.timing}</div> : null
       ) : (

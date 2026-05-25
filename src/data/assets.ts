@@ -36,15 +36,16 @@ export const ASSETS: AssetDef[] = [
   { id: 'mine', name: 'Minefield', category: 'deployable', glyph: '⚠️', icon: 'deployables/map_mine', shape: 'circle', teamColored: true },
 
   // --- Vehicles ---
-  { id: 'logi', name: 'Logistics Truck', category: 'vehicle', glyph: '🚚', icon: 'vehicles/map_truck_logistics', shape: 'diamond', teamColored: true },
+  { id: 'logi', name: 'Logi Truck', category: 'vehicle', glyph: '🚚', icon: 'vehicles/map_truck_logistics', shape: 'diamond', teamColored: true },
   { id: 'transport', name: 'Transport Truck', category: 'vehicle', glyph: '🚛', icon: 'vehicles/map_truck_transport', shape: 'diamond', teamColored: true },
-  { id: 'mrap', name: 'MRAP / Jeep', category: 'vehicle', glyph: '🚙', icon: 'vehicles/map_jeep', shape: 'diamond', teamColored: true },
+  { id: 'mrap', name: 'MRAP', category: 'vehicle', glyph: '🚙', icon: 'vehicles/map_jeep', shape: 'diamond', teamColored: true },
   { id: 'apc', name: 'APC', category: 'vehicle', glyph: '🛻', icon: 'vehicles/map_apc', shape: 'diamond', teamColored: true },
   { id: 'ifv', name: 'IFV', category: 'vehicle', glyph: '🚜', icon: 'vehicles/map_trackedifv', shape: 'diamond', teamColored: true },
   { id: 'mbt', name: 'Main Battle Tank', category: 'vehicle', glyph: '🛡️', icon: 'vehicles/map_tank', shape: 'diamond', teamColored: true },
   { id: 'heli_trans', name: 'Transport Heli', category: 'vehicle', glyph: '🚁', icon: 'vehicles/map_transporthelo', shape: 'diamond', teamColored: true },
   // id kept for saved plans — was attack heli; comp AT jeep / tech (SquadCalc icon)
   { id: 'heli_atk', name: 'AT Jeep', category: 'vehicle', glyph: '🚙', icon: 'vehicles/map_jeep_antitank', shape: 'diamond', teamColored: true },
+  { id: 'cas_heli', name: 'CAS Heli', category: 'vehicle', glyph: '🚁', icon: 'vehicles/map_attackhelo', shape: 'diamond', teamColored: true },
   { id: 'boat', name: 'Boat / RHIB', category: 'vehicle', glyph: '🚤', icon: 'vehicles/map_boat', shape: 'diamond', teamColored: true },
 
   // --- Infantry / squads ---
@@ -55,7 +56,9 @@ export const ASSETS: AssetDef[] = [
   { id: 'inf_sniper', name: 'Marksman / Sniper', category: 'infantry', glyph: '🎯', icon: 'infantry/map_marksmansniper', shape: 'circle', teamColored: true },
 ]
 
-export const ASSET_BY_ID = Object.fromEntries(ASSETS.map((a) => [a.id, a]))
+export const ASSET_BY_ID: Record<string, AssetDef> = Object.fromEntries(ASSETS.map((a) => [a.id, a]))
+/** @deprecated renamed to cas_heli — kept for older saved plans */
+ASSET_BY_ID.attack_heli = ASSET_BY_ID.cas_heli
 
 /** Resolve the icon URL for an asset given the placing team. */
 export function iconUrl(asset: AssetDef | undefined, team: 'blufor' | 'opfor' | 'neutral'): string | null {

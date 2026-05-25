@@ -60,7 +60,7 @@ export function useLayerInfo(layerId: string | null): LayerInfoData | null {
 export function assetIdForIcon(icon: string): string {
   if (icon.includes('truck_logistics') || icon.includes('logi')) return 'logi'
   if (icon.includes('truck_transport') || icon.includes('truck')) return 'transport'
-  if (icon.includes('attackhelo')) return 'heli_atk'
+  if (icon.includes('attackhelo') || icon.includes('cas')) return 'cas_heli'
   if (icon.includes('jeep_antitank')) return 'heli_atk'
   if (icon.includes('transporthelo') || icon.includes('helo')) return 'heli_trans'
   if (icon.includes('boat')) return 'boat'

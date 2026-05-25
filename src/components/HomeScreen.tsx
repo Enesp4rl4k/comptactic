@@ -4,7 +4,7 @@ import ThemeMenu from './ThemeMenu'
 
 interface Props {
   onOpenRoom: () => void
-  onJoinRoom: (roomId: string) => void
+  onJoinRoom: (roomId: string, viewOnly: boolean) => void
 }
 
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`
@@ -22,16 +22,17 @@ const NOTES = ['Live map sync', 'Line-up & vehicles', 'Host sets edit access']
 
 export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
   const [joinInput, setJoinInput] = useState('')
+  const [joinViewOnly, setJoinViewOnly] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
 
   const onJoin = () => {
-    const room = parseRoomInput(joinInput)
-    if (!room) {
-      setJoinError('Paste a share link or room code')
+    const parsed = parseRoomInput(joinInput)
+    if (!parsed) {
+      setJoinError('Enter a room code or paste an invite link')
       return
     }
     setJoinError(null)
-    onJoinRoom(room)
+    onJoinRoom(parsed.room, parsed.viewOnly || joinViewOnly)
   }
 
   return (
@@ -88,27 +89,33 @@ export default function HomeScreen({ onOpenRoom, onJoinRoom }: Props) {
 
         <section className="home-join">
           <label htmlFor="join-room" className="home-join-label">
-            Invite link or room code
+            Room code or invite link
           </label>
-          <div className="home-join-row">
+          <input
+            id="join-room"
+            type="text"
+            value={joinInput}
+            onChange={(e) => {
+              setJoinInput(e.target.value)
+              if (joinError) setJoinError(null)
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && onJoin()}
+            placeholder="xK9mP2aQ or https://…?room=…"
+            className="input home-join-input home-join-input-full"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <label className="home-join-viewonly">
             <input
-              id="join-room"
-              type="text"
-              value={joinInput}
-              onChange={(e) => {
-                setJoinInput(e.target.value)
-                if (joinError) setJoinError(null)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && onJoin()}
-              placeholder="https://… or abc123"
-              className="input home-join-input"
-              autoComplete="off"
-              spellCheck={false}
+              type="checkbox"
+              checked={joinViewOnly}
+              onChange={(e) => setJoinViewOnly(e.target.checked)}
             />
-            <button type="button" className="btn home-join-btn" onClick={onJoin}>
-              Join
-            </button>
-          </div>
+            <span>Join as viewer only (no edits)</span>
+          </label>
+          <button type="button" className="home-join-submit" onClick={onJoin}>
+            Join room
+          </button>
           {joinError && (
             <p className="home-join-error" role="alert">
               {joinError}

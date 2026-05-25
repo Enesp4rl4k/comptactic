@@ -15,7 +15,7 @@ function memberInitials(name: string): string {
 }
 
 // Line-up: squads side by side; wrap to the next row when the viewport is full.
-export default function LineupGrid() {
+export default function LineupGrid({ readOnly = false }: { readOnly?: boolean }) {
   const mapId = useBoardStore((s) => s.mapId)
   const layerId = useBoardStore((s) => s.layerId)
   const squads = useBoardStore((s) => s.squads)
@@ -42,9 +42,13 @@ export default function LineupGrid() {
           · {squads.length} squads · {totalPlayers} players
         </span>
         <div className="ml-auto flex items-center gap-1.5">
-          <button onClick={rosterUndo} disabled={!canUndo} title="Undo roster change" className="btn disabled:opacity-30 disabled:cursor-not-allowed">↶</button>
-          <button onClick={rosterRedo} disabled={!canRedo} title="Redo roster change" className="btn disabled:opacity-30 disabled:cursor-not-allowed">↷</button>
-          <button onClick={addSquad} className="btn btn-primary">+ Add Squad</button>
+          {!readOnly && (
+            <>
+              <button onClick={rosterUndo} disabled={!canUndo} title="Undo roster change" className="btn disabled:opacity-30 disabled:cursor-not-allowed">↶</button>
+              <button onClick={rosterRedo} disabled={!canRedo} title="Redo roster change" className="btn disabled:opacity-30 disabled:cursor-not-allowed">↷</button>
+              <button onClick={addSquad} className="btn btn-primary">+ Add Squad</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -54,29 +58,31 @@ export default function LineupGrid() {
             <div className="grid place-items-center min-h-[12rem] text-center text-gray-500">
               <div>
                 <div className="text-4xl mb-2">📋</div>
-                <p>No squads yet.</p>
-                <button onClick={addSquad} className="mt-3 btn btn-primary">
-                  + Add First Squad
-                </button>
+                <p>{readOnly ? 'No squads in this plan.' : 'No squads yet.'}</p>
+                {!readOnly && (
+                  <button onClick={addSquad} className="mt-3 btn btn-primary">
+                    + Add First Squad
+                  </button>
+                )}
               </div>
             </div>
           ) : (
             <div className="flex flex-wrap gap-3 items-start content-start w-full">
               {squads.map((sq) => (
-                <SquadColumn key={sq.id} squad={sq} />
+                <SquadColumn key={sq.id} squad={sq} readOnly={readOnly} />
               ))}
             </div>
           )}
         </div>
-
-        <VehiclePanel />
       </div>
+
+      <VehiclePanel readOnly={readOnly} />
     </div>
   )
 }
 
 // Memoized: re-renders only when this squad's object reference changes.
-const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad }) {
+const SquadColumn = memo(function SquadColumn({ squad, readOnly = false }: { squad: RosterSquad; readOnly?: boolean }) {
   const updateSquad = useBoardStore((s) => s.updateSquad)
   const setSquadColor = useBoardStore((s) => s.setSquadColor)
   const removeSquad = useBoardStore((s) => s.removeSquad)
@@ -107,20 +113,30 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
       className={`shrink-0 w-56 rounded border bg-panel overflow-hidden transition-colors ${
         dragOver ? 'border-accent ring-2 ring-accent/40' : 'border-edge'
       }`}
-      onDragOver={(e) => {
-        // Browsers lowercase DataTransfer.types, so compare against lowercase keys.
-        const t = Array.from(e.dataTransfer.types).map((x) => x.toLowerCase())
-        const isSquad = t.includes('squadmove')
-        if (!isSquad && full) return
-        if (isSquad || t.includes('playername') || t.includes('membermove')) {
-          e.preventDefault()
-          if (!dragOver) setDragOver(true)
-        }
-      }}
-      onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
-      }}
-      onDrop={(e) => {
+      onDragOver={
+        readOnly
+          ? undefined
+          : (e) => {
+              const t = Array.from(e.dataTransfer.types).map((x) => x.toLowerCase())
+              const isSquad = t.includes('squadmove')
+              if (!isSquad && full) return
+              if (isSquad || t.includes('playername') || t.includes('membermove')) {
+                e.preventDefault()
+                if (!dragOver) setDragOver(true)
+              }
+            }
+      }
+      onDragLeave={
+        readOnly
+          ? undefined
+          : (e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+            }
+      }
+      onDrop={
+        readOnly
+          ? undefined
+          : (e) => {
         e.preventDefault()
         setDragOver(false)
         const sqMove = e.dataTransfer.getData('squadMove')
@@ -146,6 +162,15 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
     >
       {/* header */}
       <div className="flex items-center gap-1 px-2 h-[42px]" style={{ background: accent + '22', borderBottom: `2px solid ${accent}` }}>
+        {readOnly ? (
+          <>
+            <span className="h-4 w-4 shrink-0 rounded" style={{ background: accent }} />
+            <span className="text-sm font-semibold flex-1 min-w-0 truncate">{squad.name}</span>
+            <span className="text-[10px] text-gray-400">{count}/{MAX_SLOTS}</span>
+            <span className="text-[10px] uppercase text-gray-500">{squad.team === 'blufor' ? 'BLU' : squad.team === 'opfor' ? 'OPF' : 'NEU'}</span>
+          </>
+        ) : (
+          <>
         <span
           draggable
           onDragStart={(e) => {
@@ -184,27 +209,31 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
         <button onClick={() => removeSquad(id)} className="text-gray-500 hover:text-red-400 px-1" title="Remove squad">
           ×
         </button>
+          </>
+        )}
       </div>
 
       {/* player rows */}
-      {Array.from({ length: rows }).map((_, i) => {
+      {Array.from({ length: readOnly ? count : rows }).map((_, i) => {
         const m = squad.members[i]
-        const isAddRow = i === count && count < MAX_SLOTS
+        const isAddRow = !readOnly && i === count && count < MAX_SLOTS
         const isLeader = i === 0
+        if (readOnly && !m) return null
         return (
           <div
             key={i}
             className={`flex items-center gap-1 h-9 px-1.5 border-b border-edge/40 ${isAddRow ? 'opacity-70' : ''}`}
             onDragOver={
-              m
-                ? (e) => {
+              readOnly || !m
+                ? undefined
+                : (e) => {
                     if (Array.from(e.dataTransfer.types).map((x) => x.toLowerCase()).includes('membermove')) e.preventDefault()
                   }
-                : undefined
             }
             onDrop={
-              m
-                ? (e) => {
+              readOnly || !m
+                ? undefined
+                : (e) => {
                     const move = e.dataTransfer.getData('memberMove')
                     if (!move) return
                     try {
@@ -218,10 +247,17 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
                       /* ignore */
                     }
                   }
-                : undefined
             }
           >
             {!isAddRow && m ? (
+              readOnly ? (
+                <div
+                  className="h-5 w-5 shrink-0 rounded-full grid place-items-center text-[9px] font-bold text-white"
+                  style={{ background: squad.color }}
+                >
+                  {memberInitials(m.name)}
+                </div>
+              ) : (
               <div
                 draggable
                 onDragStart={(e) => {
@@ -236,9 +272,22 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
               >
                 {memberInitials(m.name)}
               </div>
+              )
             ) : (
               <span className="h-5 w-5 shrink-0" />
             )}
+            {readOnly && m ? (
+              <>
+                <span
+                  className="text-[10px] font-bold w-[52px] shrink-0"
+                  style={isLeader ? { color: '#fde68a' } : { color: '#9ca3af' }}
+                >
+                  {ROLES.find((r) => r.id === m.role)?.short ?? m.role}
+                </span>
+                <span className="text-xs text-gray-200 flex-1 truncate">{m.name || '—'}</span>
+              </>
+            ) : (
+              <>
             <select
               value={m?.role ?? (isLeader ? 'sl' : 'rifleman')}
               onChange={(e) => setMemberSlot(id, i, { role: e.target.value })}
@@ -272,6 +321,8 @@ const SquadColumn = memo(function SquadColumn({ squad }: { squad: RosterSquad })
               >
                 ×
               </button>
+            )}
+              </>
             )}
           </div>
         )
