@@ -1,0 +1,104 @@
+.env.example
+  s_ef05d5e0d2aed5::t_a6eb10bac150dd 5-8
+src/App.tsx
+  s_ef05d5e0d2aed5::t_a8d4a9c98265d9 594-605,610-612
+  s_ef05d5e0d2aed5::t_b8d29f5801e152 684
+  s_ef05d5e0d2aed5::t_de503cb64ce43e 127-158,164,169
+  s_ef05d5e0d2aed5::t_3a420319cb9a9d 622
+  s_ef05d5e0d2aed5::t_fc19b73a444b19 641,646-647
+  s_ef05d5e0d2aed5::t_3ee61db74b9ad8 63-64
+  s_ef05d5e0d2aed5::t_e6a750f80d4473 311-312,314-329,331-333,335,339-341,344
+  s_ef05d5e0d2aed5::t_11bb2233d3687a 409-419
+  s_ef05d5e0d2aed5::t_1b99f55add6029 163,168,171
+  s_ef05d5e0d2aed5::t_2a364e51f7ed5b 357
+  s_ef05d5e0d2aed5::t_110dfa31cdfb0c 471,474-478
+  s_ef05d5e0d2aed5::t_fc8af7928478dd 671
+  s_ef05d5e0d2aed5::t_3f4285dbbcbf94 70-71
+  s_ef05d5e0d2aed5::t_646ec59a5b2024 390,393
+  s_ef05d5e0d2aed5::t_0daf43b492f706 32-33,35-36
+src/hooks/useCollabSync.ts
+  s_ef05d5e0d2aed5::t_5f11e436ff2bb2 26
+  s_ef05d5e0d2aed5::t_22562d76dcf3ef 51
+  s_ef05d5e0d2aed5::t_7b4a5bb3fd653a 41
+  s_ef05d5e0d2aed5::t_7b19fbca73dc70 20-25
+  s_ef05d5e0d2aed5::t_cd830304aa8e88 78
+  s_ef05d5e0d2aed5::t_842c71b46dc5b0 84
+  s_ef05d5e0d2aed5::t_bc9d1043578cd6 4
+src/lib/collab.ts
+  s_ef05d5e0d2aed5::t_e2c084e0b5ef1b 121
+  s_ef05d5e0d2aed5::t_edaffef570b476 3
+  s_ef05d5e0d2aed5::t_441c1b5b583878 227-229,231-232,238
+  s_ef05d5e0d2aed5::t_b618f5e9a71d70 110
+src/lib/roomCloud.ts
+  s_ef05d5e0d2aed5::t_eaec4fc0df92f1 52,54-56
+  s_ef05d5e0d2aed5::t_7da1dbcb0fc058 2
+  s_ef05d5e0d2aed5::t_66ac69fb70ce2c 1,3-51,53,57-87,104-106
+  s_ef05d5e0d2aed5::t_0fd2f78efd34d2 88-89,91-93,98-103
+src/lib/presence.ts
+  s_ef05d5e0d2aed5::t_5d2bc528dba2e0 270-271,274
+  s_ef05d5e0d2aed5::t_6bb9baaec5e2e3 146,148
+  s_ef05d5e0d2aed5::t_8bb78281e14d79 5
+  s_ef05d5e0d2aed5::t_d9436c939519a7 161,174,182,187
+  s_ef05d5e0d2aed5::t_b9915410eb70f4 212
+  s_ef05d5e0d2aed5::t_c4bac002c0b46a 4
+src/lib/roomVersions.ts
+  s_ef05d5e0d2aed5::t_2f6acef1feadfc 3,7-14
+  s_ef05d5e0d2aed5::t_8edcb7a1e98d01 36
+  s_ef05d5e0d2aed5::t_55148c2b72a52d 56
+  s_ef05d5e0d2aed5::t_234950946713ad 50
+  s_ef05d5e0d2aed5::t_bbae68e0ba28de 1-2,4-6,15-35,37-49,51-55,57-62,64-91,93-127
+  s_ef05d5e0d2aed5::t_01d2d3ab98411f 63
+  s_ef05d5e0d2aed5::t_7eddea5446bea4 92
+src/components/RoomMembersModal.tsx
+  s_ef05d5e0d2aed5::t_d61c3f51b5bccd 71-81,83
+  s_ef05d5e0d2aed5::t_0c5711e10f68ce 31-41
+  s_ef05d5e0d2aed5::t_211a4d5b22c6f4 102
+  s_ef05d5e0d2aed5::t_fa5d4aa9451ee0 7-9
+supabase/migrations/004_trim_room_versions.sql
+  s_ef05d5e0d2aed5::t_9ebfb1a432c7da 1-29
+supabase/migrations/003_rooms_and_versions.sql
+  s_ef05d5e0d2aed5::t_4c8155909acaa3 1-45
+src/index.css
+  s_ef05d5e0d2aed5::t_4204917b311fd4 515-523
+src/store/useBoardStore.ts
+  s_5dd9fd17de6aa0::t_317cfc446acadb 297
+  s_5dd9fd17de6aa0::t_8d953d9a43efc2 290-295
+  s_ef05d5e0d2aed5::t_a49a454d44dbb2 139-141
+  s_ef05d5e0d2aed5::t_eb00cf4d5c042d 337-338
+  s_5dd9fd17de6aa0::t_93df3d1098b883 1168-1169
+README.md
+  s_ef05d5e0d2aed5::t_bd4382424d0a2f 46,49-59
+  s_ef05d5e0d2aed5::t_184cbf2147752a 42-45,47-48
+  s_ef05d5e0d2aed5::t_e21243c4a1357e 13
+src/components/RoomHistoryModal.tsx
+  s_ef05d5e0d2aed5::t_aff949295fa58c 1-94
+src/components/CollabDisconnectBanner.tsx
+  s_ef05d5e0d2aed5::t_c7860e85b0eaee 1-2,4,6-10,15-16,18-20
+  s_ef05d5e0d2aed5::t_de4d8f6db5ed88 3,5,11-14,17
+src/lib/supabaseTier.ts
+  s_ef05d5e0d2aed5::t_e0bb9b905b1d41 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bcf2676c6bb97233062639626c1c9215659448a9",
+  "prompts": {},
+  "sessions": {
+    "s_5dd9fd17de6aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b7d7d5a1-7a98-4558-87a9-85a11701cea9",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    },
+    "s_ef05d5e0d2aed5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2793d63b-d8ed-4ddf-8cb3-a53f2598313e",
+        "model": "default"
+      },
+      "human_author": "Enes Parlak <eparlak996@gmail.com>"
+    }
+  }
+}
