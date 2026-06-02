@@ -1,12 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { startCollab, type CollabBoardPayload } from '../lib/collab'
 import { boardSyncFingerprint, isStructuralBoardChange, rosterSyncFingerprint } from '../lib/collabPayload'
+import { collabTiming } from '../lib/supabaseTier'
 import { useBoardStore } from '../store/useBoardStore'
-
-const BOARD_DEBOUNCE_IDLE_MS = 120
-const BOARD_DEBOUNCE_DRAW_MS = 320
-const ROSTER_DEBOUNCE_MS = 280
-const FULL_SYNC_INTERVAL_MS = 12_000
 
 /** Adaptive realtime sync: light board patches, roster merge, flush on edit end. */
 export function useCollabSync(roomId: string, viewOnly: boolean) {
@@ -21,6 +17,13 @@ export function useCollabSync(roomId: string, viewOnly: boolean) {
 
   useEffect(() => {
     if (!roomId) return
+    const {
+      boardDebounceIdleMs,
+      boardDebounceDrawMs,
+      rosterDebounceMs,
+      fullSyncIntervalMs,
+    } = collabTiming()
+    const setConnected = useBoardStore.getState().setCollabConnected
     const handle = startCollab(
       roomId,
       (board) => {
@@ -35,6 +38,7 @@ export function useCollabSync(roomId: string, viewOnly: boolean) {
       },
       () => useBoardStore.getState().toBoardPayload('full'),
       () => useBoardStore.getState().toRosterPayload(),
+      (connected) => setConnected(connected),
     )
     handleRef.current = handle
 
@@ -44,7 +48,7 @@ export function useCollabSync(roomId: string, viewOnly: boolean) {
       handle.broadcastBoard(board, { urgent: true })
       lastBoardFp.current = boardSyncFingerprint(board)
       lastFullBoard.current = board
-    }, FULL_SYNC_INTERVAL_MS)
+    }, fullSyncIntervalMs)
 
     const flushBoard = (urgent = false) => {
       if (viewOnly || !handleRef.current) return
@@ -71,13 +75,13 @@ export function useCollabSync(roomId: string, viewOnly: boolean) {
     const scheduleBoard = () => {
       clearTimeout(boardTimer.current)
       const lock = useBoardStore.getState().editingLock
-      const ms = lock === 'board' ? BOARD_DEBOUNCE_DRAW_MS : BOARD_DEBOUNCE_IDLE_MS
+      const ms = lock === 'board' ? boardDebounceDrawMs : boardDebounceIdleMs
       boardTimer.current = setTimeout(() => flushBoard(false), ms)
     }
 
     const scheduleRoster = () => {
       clearTimeout(rosterTimer.current)
-      rosterTimer.current = setTimeout(() => flushRoster(false), ROSTER_DEBOUNCE_MS)
+      rosterTimer.current = setTimeout(() => flushRoster(false), rosterDebounceMs)
     }
 
     const unsub = viewOnly

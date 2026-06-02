@@ -512,6 +512,15 @@ body {
     @apply fixed bottom-2.5 right-3 z-10 text-[10px] text-zinc-600 pointer-events-none select-none;
   }
 
+  .collab-offline-banner {
+    @apply shrink-0 px-4 py-2 text-center text-xs text-amber-200 bg-amber-950/90 border-b border-amber-500/35;
+  }
+
+  .room-title-input {
+    @apply h-8 px-2 rounded-lg bg-panel2/80 border border-edge text-sm text-zinc-200 outline-none
+           focus:border-highlight/50 min-w-0;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .home-bg-slide--1 {
       opacity: var(--home-slide-peak);

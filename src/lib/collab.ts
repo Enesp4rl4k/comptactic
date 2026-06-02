@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
+import { collabTiming } from './supabaseTier'
 import type { BoardSnapshot, CustomMapMeta } from '../types'
 
 // Partitioned realtime sync: board (map, slides, drawings) and roster (squads,
@@ -106,6 +107,7 @@ export function startCollab(
   onRemoteRoster: (roster: CollabRosterPayload) => void,
   getBoard?: () => CollabBoardPayload,
   getRoster?: () => CollabRosterPayload,
+  onConnectionChange?: (connected: boolean) => void,
 ): CollabHandle {
   let lastBoardVersion = 0
   let lastRosterVersion = 0
@@ -116,8 +118,7 @@ export function startCollab(
   let pendingRoster: CollabRosterPayload | null = null
   let lastBoardSendAt = 0
   let lastRosterSendAt = 0
-  const MIN_BOARD_MS = 90
-  const MIN_ROSTER_MS = 180
+  const { minBoardSendMs: MIN_BOARD_MS, minRosterSendMs: MIN_ROSTER_MS } = collabTiming()
 
   const bc = 'BroadcastChannel' in window ? new BroadcastChannel('comptactic:room:' + roomId) : null
   const channel = supabase
@@ -223,13 +224,18 @@ export function startCollab(
       if (payload?.sender !== clientId) replyToHello()
     })
     channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') sendHello()
+      const connected = status === 'SUBSCRIBED'
+      onConnectionChange?.(connected)
+      if (connected) sendHello()
     })
+  } else {
+    onConnectionChange?.(!!bc)
   }
 
   bc?.postMessage({ type: 'hello', sender: clientId, version: 0 })
 
   const stop = () => {
+    onConnectionChange?.(false)
     clearTimeout(helloReplyTimer)
     clearTimeout(boardSendTimer)
     clearTimeout(rosterSendTimer)

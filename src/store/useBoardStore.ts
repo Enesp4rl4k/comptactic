@@ -136,6 +136,9 @@ interface BoardState {
   collabNotice: string | null
   /** Timestamp of last inbound collab message (live indicator). */
   collabLiveAt: number
+  /** Supabase realtime channel subscribed (false = offline / reconnecting). */
+  collabConnected: boolean
+  setCollabConnected: (v: boolean) => void
   // tool config
   tool: ToolId
   team: Team
@@ -284,15 +287,20 @@ interface BoardState {
 
 function mergeRemoteBoard(s: BoardState, board: CollabBoardPayload): Partial<BoardState> {
   const tombstones = board.elementTombstones ?? {}
+  // Tombstones must be merged by max(rev) per element id; otherwise a stale remote value
+  // could overwrite a newer local tombstone and resurrect a deleted element.
+  const mergedTombstones: Record<string, number> = { ...s.elementTombstones }
+  for (const [id, rev] of Object.entries(tombstones)) {
+    mergedTombstones[id] = Math.max(mergedTombstones[id] ?? 0, rev ?? 0)
+  }
   const syncedLocal = s.slides.map((sl) => (sl.id === s.activeSlideId ? { ...sl, elements: s.elements } : sl))
-  const slides = board.slides?.length ? mergeSlides(syncedLocal, board.slides, tombstones) : syncedLocal
+  const slides = board.slides?.length ? mergeSlides(syncedLocal, board.slides, mergedTombstones) : syncedLocal
   const activeSlideId = slides.some((x) => x.id === s.activeSlideId)
     ? s.activeSlideId
     : board.activeSlideId && slides.some((x) => x.id === board.activeSlideId)
       ? board.activeSlideId
       : slides[0]?.id ?? s.activeSlideId
   const active = slides.find((x) => x.id === activeSlideId)
-  const mergedTombstones = { ...s.elementTombstones, ...tombstones }
   return {
     mapId: board.mapId,
     layerId: board.layerId,
@@ -326,6 +334,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   elementTombstones: {},
   collabNotice: null,
   collabLiveAt: 0,
+  collabConnected: true,
+  setCollabConnected: (v) => set({ collabConnected: v }),
   tool: 'select',
   team: 'blufor',
   color: TEAM_COLORS.blufor,
@@ -1155,6 +1165,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       elementTombstones: {},
       collabNotice: null,
       collabLiveAt: 0,
+      collabConnected: true,
+      setCollabConnected: (v) => set({ collabConnected: v }),
       editingLock: null,
     })
   },

@@ -29,7 +29,11 @@ import { rememberRecentRoom } from './lib/recentRooms'
 import { buildRoomJoinUrl, createAndEnterRoom, joinExistingRoom, leaveToHome, resolveInitialRoomId } from './lib/roomEntry'
 import { useCollabSync } from './hooks/useCollabSync'
 import CollabBanner from './components/CollabBanner'
+import CollabDisconnectBanner from './components/CollabDisconnectBanner'
+import RoomHistoryModal from './components/RoomHistoryModal'
 import RoomMembersModal from './components/RoomMembersModal'
+import { fetchRoomMeta, subscribeRoomMeta, upsertRoomTitle, isRoomCloudEnabled } from './lib/roomCloud'
+import { appendRoomVersion } from './lib/roomVersions'
 import { usePresence } from './lib/presence'
 import type { BoardSnapshot } from './types'
 import { useBoardStore } from './store/useBoardStore'
@@ -56,12 +60,15 @@ export default function App() {
   const [view, setView] = useState<'board' | 'lineup' | 'sheet'>('board')
   const [roomId, setRoomId] = useState<string | null>(() => resolveInitialRoomId())
   const [membersOpen, setMembersOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [roomTitle, setRoomTitle] = useState('Untitled room')
   const search = useMemo(() => new URLSearchParams(window.location.search), [roomId])
   const urlViewOnly = search.get('view') === '1'
   const embed = search.get('embed') === '1'
   const host = usePresence((s) => s.host)
   const myRole = usePresence((s) => s.myRole)
-  const canEdit = !urlViewOnly && (host || myRole === 'editor')
+  const hasEditRole = host || myRole === 'editor'
+  const canEdit = hasEditRole
   const readOnly = !canEdit
   const store = useBoardStore()
   const { user } = useAuth()
@@ -117,15 +124,51 @@ export default function App() {
 
   useEffect(() => {
     if (!roomId) return
+    let unsubMeta = () => {}
+    void fetchRoomMeta(roomId).then((meta) => {
+      if (!meta) return
+      if (meta.title) setRoomTitle(meta.title)
+      if (meta.policy) {
+        const cur = usePresence.getState().roomPolicy
+        if (!cur || meta.policyVersion >= cur.version) {
+          usePresence.getState().applyRemotePolicy(meta.policy)
+        }
+      }
+    })
+    if (isRoomCloudEnabled()) {
+      unsubMeta = subscribeRoomMeta(roomId, (meta) => {
+        if (meta.title) setRoomTitle(meta.title)
+        if (meta.policy) {
+          const cur = usePresence.getState().roomPolicy
+          if (!cur || meta.policyVersion >= cur.version) {
+            usePresence.getState().applyRemotePolicy(meta.policy)
+          }
+        }
+      })
+    }
+    return unsubMeta
+  }, [roomId])
+
+  const commitRoomTitle = () => {
+    if (!roomId || !host) return
+    const t = roomTitle.trim() || 'Untitled room'
+    setRoomTitle(t)
+    void upsertRoomTitle(roomId, t)
+  }
+
+  useEffect(() => {
+    if (!roomId) return
     const isHost = localStorage.getItem('ct:host:' + roomId) === '1'
     const viewOnlyLink = new URLSearchParams(window.location.search).get('view') === '1'
+    const effectiveViewOnly = viewOnlyLink && !hasEditRole
+    const label = roomTitle !== 'Untitled room' ? roomTitle : currentTitle !== 'Untitled plan' ? currentTitle : undefined
     rememberRecentRoom(roomId, {
       authUserId: user?.id,
       host: isHost,
-      viewOnly: viewOnlyLink,
-      label: currentTitle !== 'Untitled plan' ? currentTitle : undefined,
+      viewOnly: effectiveViewOnly,
+      label,
     })
-  }, [roomId, user?.id, currentTitle])
+  }, [roomId, user?.id, currentTitle, roomTitle, hasEditRole])
 
   // autosave (debounced)
   useEffect(() => {
@@ -264,31 +307,41 @@ export default function App() {
     await copyLink(url, 'View-only link copied (room code included)')
   }
 
-  // Save the current plan to the cloud (create or update).
   const onSave = async () => {
-    if (!isSupabaseConfigured) {
-      flash('Cloud saving is not configured')
-      return
-    }
-    if (!user) {
-      setAuthOpen(true)
-      flash('Sign in to save your plan')
-      return
-    }
+    const snap = store.toSnapshot()
+    const label = roomTitle.trim() || currentTitle || 'Save'
     try {
-      const snap = store.toSnapshot()
+      if (roomId) {
+        await appendRoomVersion(roomId, label, snap, user?.id ?? null)
+      }
+      if (!isSupabaseConfigured) {
+        flash(roomId ? 'Room checkpoint saved (local)' : 'Cloud saving is not configured')
+        return
+      }
+      if (!user) {
+        if (roomId) {
+          flash('Room version saved — sign in to also save to My Plans')
+          return
+        }
+        setAuthOpen(true)
+        flash('Sign in to save your plan')
+        return
+      }
       if (currentPlanId) {
-        await updatePlan(currentPlanId, { data: snap })
-        flash('Plan saved to cloud')
+        await updatePlan(currentPlanId, { data: snap, title: label })
+        setCurrentTitle(label)
+        flash(roomId ? 'Saved to cloud + room history' : 'Plan saved to cloud')
       } else {
-        const title = window.prompt('Plan name:', currentTitle) ?? currentTitle
+        const title = window.prompt('Plan name:', label) ?? label
         const id = await createPlan(title, snap)
         setCurrentPlanId(id)
         setCurrentTitle(title)
-        flash('Plan saved to cloud')
+        setRoomTitle(title)
+        void upsertRoomTitle(roomId!, title)
+        flash(roomId ? 'Saved to cloud + room history' : 'Plan saved to cloud')
       }
     } catch {
-      flash('Could not save — check your connection / sign-in')
+      flash('Could not save — check your connection')
     }
   }
 
@@ -301,6 +354,7 @@ export default function App() {
           setCurrentPlanId(null)
           setCurrentTitle('Untitled plan')
           const id = createAndEnterRoom()
+          void upsertRoomTitle(id, 'Untitled room')
           setRoomId(id)
         }}
         onJoinRoom={(id, viewOnlyLink) => {
@@ -333,9 +387,10 @@ export default function App() {
         <div className="read-only-banner">
           {urlViewOnly
             ? 'View-only link — you can watch the plan but not edit it'
-            : 'View access — ask the host for edit permission in Members'}
+            : 'View access — host sets editor/viewer in Members (works while host is away)'}
         </div>
       )}
+      <CollabDisconnectBanner />
       <header className="app-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-12 bg-panel/95 border-b border-edge backdrop-blur-md shrink-0 overflow-visible z-20">
         <button
           type="button"
@@ -350,6 +405,17 @@ export default function App() {
         </button>
         {roomId && (
           <RoomCodeChip roomId={roomId} onCopy={() => flash('Room code copied')} />
+        )}
+        {host && roomId && (
+          <input
+            type="text"
+            value={roomTitle}
+            onChange={(e) => setRoomTitle(e.target.value)}
+            onBlur={commitRoomTitle}
+            className="room-title-input hidden md:block max-w-[10rem]"
+            placeholder="Room name"
+            title="Room display name"
+          />
         )}
         <button
           type="button"
@@ -402,9 +468,14 @@ export default function App() {
         <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0 min-w-0 overflow-visible">
           {canEdit && (
             <>
-              <button className="btn btn-success" onClick={onSave} title="Save to cloud">
+              <button className="btn btn-success" onClick={onSave} title="Save checkpoint to room history (+ cloud plan if signed in)">
                 Save
               </button>
+              {roomId && (
+                <button className="btn hidden sm:inline-flex" onClick={() => setHistoryOpen(true)} title="Restore older saves">
+                  History
+                </button>
+              )}
               <button className="btn" onClick={() => setTemplatesOpen(true)} title="Templates &amp; library">
                 Templates
               </button>
@@ -520,9 +591,25 @@ export default function App() {
       {briefingOpen && <BriefingMode onClose={() => setBriefingOpen(false)} canEdit={canEdit} />}
       {templatesOpen && <TemplatesModal onClose={() => setTemplatesOpen(false)} flash={flash} />}
       {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
+      {roomId && (
+        <RoomHistoryModal
+          open={historyOpen}
+          roomId={roomId}
+          onClose={() => setHistoryOpen(false)}
+          onRestore={(snap, label) => {
+            store.loadSnapshot(snap)
+            setCurrentTitle(label)
+            flash(`Restored “${label}” — newer saves still in History`)
+          }}
+        />
+      )}
+      {roomId && (
       <RoomMembersModal
         open={membersOpen}
         roomId={roomId}
+        roomTitle={roomTitle}
+        onRoomTitleChange={setRoomTitle}
+        onRoomTitleCommit={commitRoomTitle}
         onClose={() => setMembersOpen(false)}
         onCopyRoomCode={onCopyRoomCode}
         onCopyEditLink={() => {
@@ -532,6 +619,7 @@ export default function App() {
           void onShareView()
         }}
       />
+      )}
 
       <nav className="sm:hidden shrink-0 flex border-t border-edge bg-panel/95 backdrop-blur-md">
         <MobileTab active={view === 'board'} onClick={() => setView('board')} label="Board" />
@@ -550,10 +638,13 @@ function OnlineBar({ onOpenMembers }: { onOpenMembers: () => void }) {
   const name = usePresence((s) => s.name)
   const color = usePresence((s) => s.color)
   const host = usePresence((s) => s.host)
+  const myRole = usePresence((s) => s.myRole)
   const collabLiveAt = useBoardStore((s) => s.collabLiveAt)
   const [live, setLive] = useState(false)
   const others = Object.values(peers)
   const total = others.length + 1
+  const editorCount =
+    (host || myRole === 'editor' ? 1 : 0) + others.filter((p) => p.host || p.role === 'editor').length
   const initial = (n: string) => (n.trim().charAt(0) || '?').toUpperCase()
 
   useEffect(() => {
@@ -577,7 +668,7 @@ function OnlineBar({ onOpenMembers }: { onOpenMembers: () => void }) {
       <button
         onClick={onOpenMembers}
         className="flex items-center gap-1 cursor-pointer"
-        title={`${total} in session${live ? ' · syncing' : ''} — manage members`}
+        title={`${total} in session · ${editorCount} editing${live ? ' · syncing' : ''}`}
       >
         <div className="flex items-center -space-x-1.5 avatar-stack">
           <span className="h-7 w-7 rounded-full grid place-items-center text-[11px] font-bold text-black ring-2 ring-panel" style={{ background: color }}>
@@ -590,6 +681,7 @@ function OnlineBar({ onOpenMembers }: { onOpenMembers: () => void }) {
           ))}
         </div>
         {total > 4 && <span className="text-xs text-gray-400">+{total - 4}</span>}
+        <span className="hidden lg:inline text-[10px] text-zinc-500 font-medium ml-0.5">{editorCount} edit</span>
         {host && <span className="hidden xl:inline text-[10px] text-amber-400/90 font-medium ml-0.5">Host</span>}
       </button>
     </div>

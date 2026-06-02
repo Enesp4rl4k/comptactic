@@ -4,6 +4,9 @@ import type { RoomRole } from '../lib/roomPolicy'
 interface Props {
   open: boolean
   roomId: string
+  roomTitle: string
+  onRoomTitleChange: (title: string) => void
+  onRoomTitleCommit: () => void
   onClose: () => void
   onCopyRoomCode: () => void
   onCopyEditLink: () => void
@@ -25,7 +28,17 @@ function RoleBadge({ role, host }: { role: RoomRole; host?: boolean }) {
   )
 }
 
-export default function RoomMembersModal({ open, roomId, onClose, onCopyRoomCode, onCopyEditLink, onCopyViewLink }: Props) {
+export default function RoomMembersModal({
+  open,
+  roomId,
+  roomTitle,
+  onRoomTitleChange,
+  onRoomTitleCommit,
+  onClose,
+  onCopyRoomCode,
+  onCopyEditLink,
+  onCopyViewLink,
+}: Props) {
   const peers = usePresence((s) => s.peers)
   const name = usePresence((s) => s.name)
   const color = usePresence((s) => s.color)
@@ -55,9 +68,19 @@ export default function RoomMembersModal({ open, roomId, onClose, onCopyRoomCode
         <div className="p-4 space-y-4 overflow-y-auto max-h-[70vh]">
           {host && (
             <div className="rounded-lg border border-edge bg-panel2/50 p-3 space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Private room</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Room</div>
+              <label className="block text-xs text-zinc-500">
+                Display name (recent rooms &amp; saves)
+                <input
+                  value={roomTitle}
+                  onChange={(e) => onRoomTitleChange(e.target.value)}
+                  onBlur={onRoomTitleCommit}
+                  className="input mt-1 w-full text-sm"
+                  placeholder="Friday AAS brief"
+                />
+              </label>
               <p className="text-xs text-zinc-400">
-                New joiners start as view-only until you grant edit access. Share the view link for spectators; promote trusted members to Editor below.
+                Access is stored on the server — editors keep working when you are offline. Set default role for new joiners below.
               </p>
               <label className="flex items-center justify-between gap-3 text-sm text-zinc-300">
                 <span>Default for new members</span>
@@ -76,7 +99,7 @@ export default function RoomMembersModal({ open, roomId, onClose, onCopyRoomCode
           {!host && (
             <div className="rounded-lg border border-edge bg-panel2/50 px-3 py-2 text-xs text-zinc-400 flex items-center gap-2">
               Your access: <RoleBadge role={myRole} />
-              {myRole === 'viewer' && <span>Ask the host for edit access.</span>}
+              {myRole === 'viewer' && <span>Ask the host for edit access, or use an editor invite.</span>}
             </div>
           )}
 

@@ -10,7 +10,7 @@ Browser-based Squad tactical planner: draw on map layers, build line-ups, vehicl
 - Custom PNG map import (scale in km for measure / range tools)
 - Drawing tools, zones, assets, measure & **range rings** (mortar / FOB radius at map scale)
 - Multi-slide tactics per layer, briefing mode, PDF/PNG export, **tactic sheet composite PNG**
-- Real-time collab via `?room=` (BroadcastChannel + optional Supabase)
+- Real-time collab via `?room=` (BroadcastChannel + optional Supabase): server room policy, named rooms, editor count, offline-host editing for assigned editors, disconnect banner, and **History** (every Save is kept; restoring an older version does not delete newer saves)
 - Cloud plans & share links when Supabase is configured
 
 ## Development
@@ -39,7 +39,24 @@ VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-Run `supabase/schema.sql` in the Supabase SQL editor. For existing projects, also apply `supabase/migrations/002_shares_hardening.sql`.
+Run `supabase/schema.sql` in the Supabase SQL editor. For existing projects, also apply:
+
+- `supabase/migrations/002_shares_hardening.sql`
+- `supabase/migrations/003_rooms_and_versions.sql` — server room title, member policy sync, and append-only save history per room
+- `supabase/migrations/004_trim_room_versions.sql` — keeps only the latest 12 saves per room (recommended on **Free**)
+
+Without `003`, collab still works via BroadcastChannel; room policy/history fall back to browser `localStorage` where implemented.
+
+### Supabase Free (no Pro)
+
+The app defaults to **Free-tier mode** (`VITE_SUPABASE_FREE_TIER=1` in `.env.example`):
+
+- Slower collab debounce and less frequent full sync (saves Realtime messages)
+- Room policy/title uses **polling** instead of `postgres_changes`
+- Save history capped at **12** versions per room in the database (trigger in `004`)
+- Inline custom map images are not stored inside cloud save rows (URLs only)
+
+Copy `.env.example` → `.env.local`, add your project URL + anon key, and **do not** upgrade to Pro unless you hit limits. Set `VITE_SUPABASE_FREE_TIER=0` only after moving to Pro if you want faster sync.
 
 **Vercel:** add the same `VITE_*` variables in Project → Settings → Environment Variables, then redeploy.
 

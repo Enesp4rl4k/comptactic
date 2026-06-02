@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
+import { upsertRoomPolicy } from './roomCloud'
+import { presenceTiming } from './supabaseTier'
 import {
   createDefaultPolicy,
   loadRoomPolicy,
@@ -140,9 +142,10 @@ export const usePresence = create<PresenceState>((set, get) => ({
     let policy = loadRoomPolicy(roomId)
     if (!policy || policy.hostId !== myId) {
       policy = createDefaultPolicy(roomId, myId)
-      saveRoomPolicy(policy)
     }
+    saveRoomPolicy(policy)
     set({ roomPolicy: policy, myRole: 'editor' })
+    void upsertRoomPolicy(policy)
     get().broadcastPolicy()
   },
 
@@ -155,6 +158,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
       version: Date.now(),
     }
     saveRoomPolicy(updated)
+    void upsertRoomPolicy(updated)
     set((st) => ({
       roomPolicy: updated,
       peers: st.peers[memberId] ? { ...st.peers, [memberId]: { ...st.peers[memberId], role } } : st.peers,
@@ -167,6 +171,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
     if (!s.host || !s.roomPolicy) return
     const updated: RoomPolicy = { ...s.roomPolicy, defaultRole: role, version: Date.now() }
     saveRoomPolicy(updated)
+    void upsertRoomPolicy(updated)
     set({ roomPolicy: updated })
     get().broadcastPolicy()
   },
@@ -174,10 +179,12 @@ export const usePresence = create<PresenceState>((set, get) => ({
   broadcastPolicy: () => {
     const s = get()
     if (!s.host || !s.roomPolicy) return
+    void upsertRoomPolicy(s.roomPolicy)
     s._send?.('policy', s.roomPolicy)
   },
 
   applyRemotePolicy: (policy) => {
+    saveRoomPolicy(policy)
     const role = roleForMember(policy, myId, get().host)
     set((s) => ({
       roomPolicy: policy,
@@ -202,6 +209,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
           version: Date.now(),
         }
         saveRoomPolicy(updated)
+        void upsertRoomPolicy(updated)
         set({ roomPolicy: updated })
         get().broadcastPolicy()
       }
@@ -259,10 +267,11 @@ export const usePresence = create<PresenceState>((set, get) => ({
 
     send('cursor', peerPayload(get()))
 
-    const hb = setInterval(() => send('cursor', peerPayload(get())), 5000)
+    const { cursorIntervalMs, policyIntervalMs } = presenceTiming()
+    const hb = setInterval(() => send('cursor', peerPayload(get())), cursorIntervalMs)
     const policyHb = setInterval(() => {
       if (get().host) get().broadcastPolicy()
-    }, 8000)
+    }, policyIntervalMs)
     const prune = setInterval(() => {
       const now = Date.now()
       set((s) => {
