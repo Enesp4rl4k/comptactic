@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "solidguard": {
+      "command": "node",
+      "args": ["C:/absolute/path/to/csharp-quality-mcp/dist/index.js"],
+      "env": {
+        "SG_LLM_PROVIDER": "openai",
+        "SG_LLM_MODEL": "gpt-4o-mini",
+        "SG_LLM_API_KEY": "sk-..."
+      }
+    }
+  }
+}

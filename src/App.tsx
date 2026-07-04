@@ -32,8 +32,11 @@ import CollabBanner from './components/CollabBanner'
 import CollabDisconnectBanner from './components/CollabDisconnectBanner'
 import RoomHistoryModal from './components/RoomHistoryModal'
 import RoomMembersModal from './components/RoomMembersModal'
+import AdminPanel from './components/AdminPanel'
 import { fetchRoomMeta, subscribeRoomMeta, upsertRoomTitle, isRoomCloudEnabled } from './lib/roomCloud'
 import { appendRoomVersion } from './lib/roomVersions'
+import { logRoomAccess } from './lib/roomAccessLog'
+import { isAdminUnlocked, unlockAdmin } from './lib/adminAccess'
 import { usePresence } from './lib/presence'
 import type { BoardSnapshot } from './types'
 import { useBoardStore } from './store/useBoardStore'
@@ -61,6 +64,11 @@ export default function App() {
   const [roomId, setRoomId] = useState<string | null>(() => resolveInitialRoomId())
   const [membersOpen, setMembersOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  // ?admin=1 auto-opens the panel, but only when the gate is already satisfied
+  // (open gate or unlocked this session) — never prompt during render.
+  const [adminOpen, setAdminOpen] = useState(
+    () => new URLSearchParams(window.location.search).get('admin') === '1' && isAdminUnlocked(),
+  )
   const [roomTitle, setRoomTitle] = useState('Untitled room')
   const search = useMemo(() => new URLSearchParams(window.location.search), [roomId])
   const urlViewOnly = search.get('view') === '1'
@@ -121,6 +129,29 @@ export default function App() {
     const p = usePresence.getState()
     if (!p.name && user?.email) p.setName(user.email.split('@')[0])
   }, [user])
+
+  // Record one access-log row per room join so the Admin panel can show who
+  // opened the room (and flag guests / external link sources = possible leaks).
+  useEffect(() => {
+    if (!roomId) return
+    const p = usePresence.getState()
+    void logRoomAccess({
+      roomId,
+      memberId: p.myId,
+      memberName: p.name || (user?.email?.split('@')[0] ?? 'Guest'),
+      role: p.host ? 'host' : p.myRole,
+      isHost: p.host,
+      viewOnly: urlViewOnly,
+      authUserId: user?.id ?? null,
+      authEmail: user?.email ?? null,
+    })
+    // Re-log per room and per identity change; logRoomAccess dedupes within a session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, user?.id, urlViewOnly])
+
+  const openAdmin = () => {
+    if (unlockAdmin()) setAdminOpen(true)
+  }
 
   useEffect(() => {
     if (!roomId) return
@@ -530,7 +561,7 @@ export default function App() {
           <OnlineBar onOpenMembers={() => setMembersOpen(true)} />
           <div className="mx-1 h-6 w-px bg-edge" />
           {user ? (
-            <UserMenu email={user.email ?? 'Account'} onSignOut={() => signOut()} />
+            <UserMenu email={user.email ?? 'Account'} onSignOut={() => signOut()} onOpenAdmin={openAdmin} />
           ) : (
             <button className="btn btn-primary" onClick={() => setAuthOpen(true)}>Sign in</button>
           )}
@@ -620,6 +651,8 @@ export default function App() {
         }}
       />
       )}
+
+      <AdminPanel open={adminOpen} currentRoomId={roomId} onClose={() => setAdminOpen(false)} />
 
       <nav className="sm:hidden shrink-0 flex border-t border-edge bg-panel/95 backdrop-blur-md">
         <MobileTab active={view === 'board'} onClick={() => setView('board')} label="Board" />
@@ -842,7 +875,7 @@ function RoomCodeChip({ roomId, onCopy }: { roomId: string; onCopy: () => void }
   )
 }
 
-function UserMenu({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+function UserMenu({ email, onSignOut, onOpenAdmin }: { email: string; onSignOut: () => void; onOpenAdmin: () => void }) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLButtonElement>(null)
   const initial = email.trim().charAt(0).toUpperCase() || 'U'
@@ -861,6 +894,16 @@ function UserMenu({ email, onSignOut }: { email: string; onSignOut: () => void }
       </button>
       <DropdownMenuPortal open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} className="w-56">
         <div className="dropdown-label truncate">{email}</div>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false)
+            onOpenAdmin()
+          }}
+          className="dropdown-item"
+        >
+          Admin · room access
+        </button>
         <button
           type="button"
           onClick={() => {

@@ -26,3 +26,9 @@ dist-ssr
 .vercel
 test-results/
 playwright-report/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
