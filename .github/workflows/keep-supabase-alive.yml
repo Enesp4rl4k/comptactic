@@ -1,0 +1,28 @@
+name: Keep Supabase Alive
+
+# Runs periodically to ensure Supabase Free Tier never pauses due to inactivity.
+on:
+  schedule:
+    # Runs at 06:00 UTC on every 2nd day
+    - cron: '0 6 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            echo "Pinging Supabase at $SUPABASE_URL..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              "$SUPABASE_URL/rest/v1/plans?select=id&limit=1")
+            echo "Response HTTP Status: $STATUS"
+          else
+            echo "VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY secret not set, skipping ping."
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
