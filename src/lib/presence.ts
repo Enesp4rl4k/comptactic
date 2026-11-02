@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
 import { upsertRoomPolicy } from './roomCloud'
 import { presenceTiming } from './supabaseTier'
+import { getP2PRoom, releaseP2PRoom } from './p2p'
 import {
   createDefaultPolicy,
   loadRoomPolicy,
@@ -195,6 +196,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
 
   start: (roomId) => {
     const bc = 'BroadcastChannel' in window ? new BroadcastChannel('comptactic:presence:' + roomId) : null
+    const p2p = getP2PRoom(roomId)
     const channel = supabase ? supabase.channel('presence:' + roomId, { config: { broadcast: { self: false } } }) : null
 
     const registerPeer = (p: Peer) => {
@@ -234,6 +236,18 @@ export const usePresence = create<PresenceState>((set, get) => ({
       })
     }
 
+    const p2pPresence = p2p.makeAction<any>('presence', {
+      onMessage: (m: { kind: string; payload: unknown }) => {
+        if (!m) return
+        if (m.kind === 'cursor') registerPeer(m.payload as Peer)
+        else if (m.kind === 'ping') {
+          const p = m.payload as Ping
+          if (p) set((s) => (s.pings.some((x) => x.id === p.id) ? s : { pings: [...s.pings, p] }))
+        } else if (m.kind === 'kick') recvKick(m.payload as { target: string; by: string })
+        else if (m.kind === 'policy') recvPolicy(m.payload as RoomPolicy)
+      },
+    })
+
     if (bc) {
       bc.onmessage = (e: MessageEvent<{ kind: string; payload: unknown }>) => {
         const m = e.data
@@ -250,6 +264,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
     const send: Sender = (event, payload) => {
       bc?.postMessage({ kind: event, payload })
       channel?.send({ type: 'broadcast', event, payload })
+      void p2pPresence.send({ kind: event, payload }).catch(() => {})
     }
     set({ _send: send })
 
@@ -288,6 +303,7 @@ export const usePresence = create<PresenceState>((set, get) => ({
       clearInterval(prune)
       bc?.close()
       if (channel && supabase) supabase.removeChannel(channel)
+      releaseP2PRoom(roomId)
       set({ _send: undefined, peers: {}, pings: [], roomPolicy: null, myRole: 'viewer' })
     }
   },

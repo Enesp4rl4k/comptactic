@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid'
 import { supabase } from './supabase'
 import { collabTiming } from './supabaseTier'
+import { getP2PRoom, releaseP2PRoom } from './p2p'
 import type { BoardSnapshot, CustomMapMeta } from '../types'
 
 // Partitioned realtime sync: board (map, slides, drawings) and roster (squads,
@@ -121,13 +122,26 @@ export function startCollab(
   const { minBoardSendMs: MIN_BOARD_MS, minRosterSendMs: MIN_ROSTER_MS } = collabTiming()
 
   const bc = 'BroadcastChannel' in window ? new BroadcastChannel('comptactic:room:' + roomId) : null
+  const p2p = getP2PRoom(roomId)
   const channel = supabase
     ? supabase.channel('room:' + roomId, { config: { broadcast: { self: false } } })
     : null
 
+  const p2pCollab = p2p.makeAction<any>('collab', {
+    onMessage: (msg: CollabMessage) => {
+      applyMessage(msg)
+    },
+  })
+
+  p2p.onPeerJoin = () => {
+    onConnectionChange?.(true)
+    replyToHello()
+  }
+
   const send = (msg: CollabMessage) => {
     bc?.postMessage(msg)
     channel?.send({ type: 'broadcast', event: 'collab', payload: msg })
+    void p2pCollab.send(msg).catch(() => {})
   }
 
   const flushBoardSend = (board: CollabBoardPayload) => {
@@ -229,10 +243,11 @@ export function startCollab(
       if (connected) sendHello()
     })
   } else {
-    onConnectionChange?.(!!bc)
+    onConnectionChange?.(true)
   }
 
   bc?.postMessage({ type: 'hello', sender: clientId, version: 0 })
+  sendHello()
 
   const stop = () => {
     onConnectionChange?.(false)
@@ -241,6 +256,7 @@ export function startCollab(
     clearTimeout(rosterSendTimer)
     bc?.close()
     if (channel && supabase) supabase.removeChannel(channel)
+    releaseP2PRoom(roomId)
   }
 
   return { broadcastBoard, broadcastRoster, stop }
